@@ -1,0 +1,44 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="Raytracing experiments"
+run/main_scene="res://test_scene.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://icon.svg"
+
+[rendering]
+
+driver/threads/thread_model=2
+lights_and_shadows/directional_shadow/size=8192
+lights_and_shadows/directional_shadow/size.mobile=4096
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=5
+lights_and_shadows/positional_shadow/soft_shadow_filter_quality=5
+global_illumination/voxel_gi/quality=1
+environment/ssil/quality=4
+environment/ssil/half_size=false
+environment/ssil/adaptive_target=1.0
+environment/ssil/fadeout_from=0.0
+environment/ssil/fadeout_to=65536.0
+anti_aliasing/quality/msaa_3d=1
+anti_aliasing/screen_space_roughness_limiter/enabled=false
+scaling_3d/fsr_sharpness=0.0
+lightmapping/primitive_meshes/texel_size=0.01
+global_illumination/sdfgi/probe_ray_count=5
+global_illumination/sdfgi/frames_to_converge=0
+global_illumination/sdfgi/frames_to_update_lights=0
+lightmapping/bake_performance/region_size=1024
+lights_and_shadows/positional_shadow/atlas_size=8192
+lights_and_shadows/positional_shadow/atlas_size.mobile=4096
