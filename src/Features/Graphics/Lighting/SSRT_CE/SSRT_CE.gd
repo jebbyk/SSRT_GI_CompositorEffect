@@ -1,6 +1,6 @@
 @tool
-class_name SSRT_CE
 
+class_name SSRT_CE
 extends BaseCompositorEffect
 
 const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/trace.glsl"
@@ -54,7 +54,6 @@ func _initialize_render() -> void:
 	
 	
 func _render_setup() -> void:
-	print("from SSRT_CE::_render_setup()")
 	if not settings_ubo.is_valid() or settings_dirty:
 		print("from SSRT_CE::_render_setup(). Settings are dirty")
 		create_settings_uniform_buffer()
@@ -95,6 +94,13 @@ func _render_view(p_view : int) -> void:
 
 
 func _render_size_changed() -> void:
+	print("from SSRT_CE::_render_size_changed()")
+	render_scene_buffers.clear_context(context)
+	make_settings_dirty()
+	
+	
+func _settings_changed() -> void:
+	print("from SSRT_CE::_settings_changed()")
 	render_scene_buffers.clear_context(context)
 	make_settings_dirty()
 
@@ -138,9 +144,11 @@ func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
 
 func setup_settings() -> void:
 	print("from SSRT_CE::setup_settings()")
-	if not settings.changed.is_connected(make_settings_dirty):
-		settings.changed.connect(make_settings_dirty)
+	if not settings.s_changed.is_connected(_settings_changed):
+		settings.s_changed.connect(_settings_changed)
 		
+		
+
 		
 func make_settings_dirty() -> void:
 	print("from SSRT_CE::make_settings_dirty()")

@@ -119,11 +119,11 @@ void fragment() {
 
 	float depth = getLinearDepth(SCREEN_UV, INV_PROJECTION_MATRIX);
 	
-	//if(depth > farPlane) {discard;}
+	if(depth > farPlane) {discard;}
 
 	vec3 normal = getScreenSpaceNormal(SCREEN_UV) * vec3(1.0,-1.0,-1.0);
 
-	//float reflected = getRoughness(SCREEN_UV);
+	float reflected = getRoughness(SCREEN_UV);
 
 	vec2 centredTexCoord = SCREEN_UV - 0.5;
 
@@ -139,9 +139,9 @@ void fragment() {
 
 	stepLength += (rand(TIME * 0.001 * SCREEN_UV) - 0.5) * stepLength;
 
-	//vec3 _skyColor = skyColor.rgb * skyColorIntencity;
-	//vec3 _skyColorM = _skyColor * 0.25;
-//
+	vec3 _skyColor = skyColor.rgb * skyColorIntencity;
+	vec3 _skyColorM = _skyColor * 0.25;
+
 	float aspectRatio = VIEWPORT_SIZE.y / VIEWPORT_SIZE.x;
 	
 	for(float i = 1.0; i < raysAmount + 1.0; i += 1.0){
@@ -154,17 +154,15 @@ void fragment() {
 		probePosition += normal * rayBias * depth;
 
 		vec3 rand3d = (rand3d(SCREEN_UV + vec2(i * TIME * 0.0001, i * TIME * 0.0001)) - vec3(0.5)) * 2.0;
-		vec3 probeDirection = randomHemispherePoint(rand3d, normal) * vec3(aspectRatio, 1.0, 1.0);
+		vec3 probeDirectionDiffused = randomHemispherePoint(rand3d, normal) * vec3(aspectRatio, 1.0, 1.0);
 
-		////vec3 probeDirectionReflected = reflect(probePosition, normal);
+		vec3 probeDirectionReflected = reflect(probePosition, normal);
 	
-		////vec3 probeDirection = mix(probeDirectionDiffused, probeDirectionReflected, reflected);
+		vec3 probeDirection = mix(probeDirectionDiffused, probeDirectionReflected, reflected);
 
 		vec3 probeStep = probeDirection * stepLength;
 		
-		//vec3 probeStep = probeDirectionDiffused * stepLength;
-		//
-//
+
 		for(float j = 1.0; j < stepsPerRay + 1.0; j += 1.0){
 			probePosition += probeStep;
 		
@@ -181,38 +179,34 @@ void fragment() {
 			//ALBEDO = ALBEDO - vec3(probeTestDepth) * 0.01;	
 			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + depthTreshold) {
 				GIAO += 10.0;
-				////ALBEDO = ALBEDO - vec3(1.0);
 				vec3 probeTestNormal = getScreenSpaceNormal(newUvCoord).xyz * vec3(1.0, -1.0, -1.0);
-				
-//
+
 				if(!backFaceLighting) {
 					if(dot(probeTestNormal, probeDirection) > 0.0) {
 						break;
 					}
 				}
-////
-				vec3 probeTestColor = texture(screen_texture, newUvCoord).rgb;
-////
-				ALBEDO = ALBEDO - probeTestColor;
 
-				////GI += probeTestColor;
-				////
-				////break;
+				vec3 probeTestColor = texture(screen_texture, newUvCoord).rgb;
+
+				GI += probeTestColor;
+				
+				break;
 			}
 		}
-////
-		////if(rayMissToSky){
-			////GI += _skyColorM;
-		////}
+		
+		if(rayMissToSky){
+			GI += _skyColorM;
+		}
 	}
-//
-	////GI /= raysAmount;
-	////GI *= intencity * 0.1;
-	////
-	////GIAO /= raysAmount;
-	////GIAO *= aoIntencity * 0.025;
 
-	//ALBEDO = (GIAO*ALBEDO) -(GI * ALBEDO) * 50.0;
+	GI /= raysAmount;
+	GI *= intencity * 0.1;
+	
+	GIAO /= raysAmount;
+	GIAO *= aoIntencity * 0.025;
+
+	ALBEDO = (GIAO*ALBEDO) -(GI * ALBEDO) * 50.0;
 
 
 	//ALBEDO = ALBEDO - normal;

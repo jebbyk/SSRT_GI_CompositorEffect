@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://ccb43csyh10lr" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_CE.gd" id="2_8pr8v"]
 [ext_resource type="Script" uid="uid://b30a24s45nobl" path="res://Features/Testing/camera.gd" id="2_48kf0"]
 [ext_resource type="Texture2D" uid="uid://bj8ttgg0qulg1" path="res://Features/Graphics/Lighting/SSRT_sp/bluenoise.png" id="2_xhejr"]
-[ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_8pr8v"]
+[ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_buypi"]
 [ext_resource type="VoxelGIData" uid="uid://d0gesferqakuj" path="res://test_scene.VoxelGI_data.res" id="4_2nij2"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4m2n"]
@@ -145,12 +145,12 @@ adjustment_enabled = true
 adjustment_brightness = 1.26
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
-script = ExtResource("3_8pr8v")
-rays_amount = 12
+script = ExtResource("3_buypi")
+rays_amount = 8
 steps_per_ray = 64
-ray_length = 6.0
+ray_length = 4.0
 depth_affect_ray_length = false
-bounce_intensity = 5.0
+bounce_intensity = 3.0
 occlusion_intensity = 5.0
 z_thickness = 1.0
 
@@ -172,15 +172,15 @@ compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buyp
 resource_local_to_scene = true
 render_priority = 127
 shader = ExtResource("1_f8t32")
-shader_parameter/raysAmount = 1.0
-shader_parameter/stepsPerRay = 1.0
-shader_parameter/intencity = 5.00000023680148
-shader_parameter/aoIntencity = 3.00000014180148
+shader_parameter/raysAmount = 8.0
+shader_parameter/stepsPerRay = 64.0
+shader_parameter/intencity = 3.00000014180148
+shader_parameter/aoIntencity = 4.00000018930148
 shader_parameter/intencityFallof = 0.0
-shader_parameter/rayLength = 0.20000000880148
-shader_parameter/screenSpaceFixedRayLength = true
+shader_parameter/rayLength = 4.00000018930148
+shader_parameter/screenSpaceFixedRayLength = false
 shader_parameter/depthTreshold = 1.00000004680148
-shader_parameter/rayBias = 0.10000000149012
+shader_parameter/rayBias = 0.0
 shader_parameter/skyColor = Color(0.18899366, 0.3704716, 0.5038505, 1)
 shader_parameter/skyColorIntencity = 0.00999999977648
 shader_parameter/rayMissToSky = false
@@ -356,7 +356,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D11" type="CSGBox3D" parent="building" unique_id=1977674993]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -3.8577304, -1.828439, -11.87117)
+transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -4.1966596, -1.828439, -11.87117)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -370,7 +370,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D25" type="CSGBox3D" parent="building" unique_id=663577053]
-transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -4.857858, -0.6314235, -18.558624)
+transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -6.931526, -1.1136699, -18.374058)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -517,6 +517,7 @@ rings = 12
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8513933, -0.04808851, -0.52231944, 0.36011788, -0.67042613, 0.64872515, -0.38137263, -0.7404165, -0.55347854, 5.7162585, 1.8341535, -3.6544616)
+visible = false
 light_color = Color(1, 0.945098, 0.854902, 1)
 shadow_enabled = true
 shadow_bias = 0.01
