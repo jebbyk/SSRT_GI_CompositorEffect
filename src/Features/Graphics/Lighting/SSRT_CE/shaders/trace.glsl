@@ -1,78 +1,7 @@
 #[compute]
 #version 450
 
-//TODO if there is buffer size error it means new version of godot has an update scene data buffer
-// copy-paste it from here https://github.com/godotengine/godot/blob/master/servers/rendering/renderer_rd/shaders/scene_data_inc.glsl
-struct SceneData {
-	mat4 projection_matrix;
-	mat4 inv_projection_matrix;
-	mat3x4 inv_view_matrix;
-	mat3x4 view_matrix;
-
-// #ifdef USE_DOUBLE_PRECISION
-// 	vec4 inv_view_precision;
-// #endif
-
-	// only used for multiview
-	mat4 projection_matrix_view[2];
-	mat4 inv_projection_matrix_view[2];
-	vec4 eye_offset[2];
-
-	// Used for billboards to cast correct shadows.
-	mat4 main_cam_inv_view_matrix;
-
-	vec2 viewport_size;
-	vec2 screen_pixel_size;
-
-	// Use vec4s because std140 doesn't play nice with vec2s, z and w are wasted.
-	vec4 directional_penumbra_shadow_kernel[32];
-	vec4 directional_soft_shadow_kernel[32];
-	vec4 penumbra_shadow_kernel[32];
-	vec4 soft_shadow_kernel[32];
-
-	vec2 shadow_atlas_pixel_size;
-	vec2 directional_shadow_pixel_size;
-
-	float radiance_pixel_size;
-	float radiance_border_size;
-	vec2 reflection_atlas_border_size;
-
-	uint directional_light_count;
-	float dual_paraboloid_side;
-	float z_far;
-	float z_near;
-
-	float roughness_limiter_amount;
-	float roughness_limiter_limit;
-	float opaque_prepass_threshold;
-	uint flags;
-
-	mat3 radiance_inverse_xform;
-
-	vec4 ambient_light_color_energy;
-
-	float ambient_color_sky_mix;
-	float fog_density;
-	float fog_height;
-	float fog_height_density;
-
-	float fog_depth_curve;
-	float fog_depth_begin;
-	float fog_depth_end;
-	float fog_sun_scatter;
-
-	vec3 fog_light_color;
-	float fog_aerial_perspective;
-
-	float time;
-	float taa_frame_count;
-	vec2 taa_jitter;
-
-	float emissive_exposure_normalization;
-	float IBL_exposure_normalization;
-	uint camera_visible_layers;
-	float pass_alpha_multiplier;
-};
+#include "includes/scene_data.glsl"
 
 struct SSRTData {
 	vec4 sky_color;
@@ -90,11 +19,11 @@ struct SSRTData {
 
 // Invocations in the (x, y, z) dimension
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-
 layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 	SceneData data;
 	// SceneData prev_data;
 } scene;
+
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
@@ -142,6 +71,11 @@ vec3 randomHemispherePoint(vec3 rand, vec3 n) {
   return v * sign(dot(v, n));
 }
 
+bool inScreen(vec2 coord, vec2 size)
+{
+	return coord.x > 0.0 && coord.x < size.x &&
+		coord.y > 0.0 && coord.y < size.y;
+}
 
 vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 	float roughness = p_normal_roughness.w;
@@ -165,12 +99,6 @@ float get_linear_depth(ivec2 uv)
 	view.xyz /= view.w;
 
 	return -view.z;
-}
-
-bool inScreen(vec2 coord, vec2 size)
-{
-	return coord.x > 0.0 && coord.x < size.x &&
-		coord.y > 0.0 && coord.y < size.y;
 }
 
 //The code we want to execute in each invocation
@@ -262,4 +190,6 @@ void main() {
 	imageStore(color_image, uv,  vec4(mix((color + color * GI.rgb), vec3(0), GI.a), 1.0));
 	// imageStore(color_image, uv, vec4(color + GI.rgb * 0.1, 1.0));
 	// imageStore(out_image, uv, GI);
+
 }
+

@@ -134,7 +134,7 @@ func create_shader(p_file_path : String) -> RID:
 	var shader : RID = rd.shader_create_from_spirv(shader_spirv)
 	add_rid_to_free(shader, "shader: %s" % p_file_path)
 	return shader
-
+	
 
 ## p_constants is a dictionary of {int : bool/int/float}.
 func create_pipeline(p_shader : RID, p_constants := {}) -> RID:
@@ -439,4 +439,8 @@ func _render_view(p_view : int) -> void:
 
 ## Called before _render_setup() if `render_size` has changed.
 func _render_size_changed() -> void:
+	pass
+	
+	
+func _recompile_shaders() -> void:
 	pass

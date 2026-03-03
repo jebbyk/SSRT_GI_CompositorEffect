@@ -150,8 +150,9 @@ rays_amount = 16
 steps_per_ray = 64
 ray_length = 4.0
 depth_affect_ray_length = false
-bounce_intensity = 4.0
-occlusion_intensity = 4.0
+bounce_intensity = 2.0
+occlusion_intensity = 5.0
+back_face_lighting = true
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false

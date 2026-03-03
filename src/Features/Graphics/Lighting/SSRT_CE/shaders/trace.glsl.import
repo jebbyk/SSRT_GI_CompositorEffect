@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bw77rbt5rlp5v"
+path="res://.godot/imported/trace.glsl-2af96e6a0ebc0825a72850e060424486.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"
+dest_files=["res://.godot/imported/trace.glsl-2af96e6a0ebc0825a72850e060424486.res"]
+
+[params]
+

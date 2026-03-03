@@ -2,8 +2,11 @@
 class_name SSRT_CE
 extends BaseCompositorEffect
 
-#TODO use includes
+#TODO reduce self-litting
+#TODO use includes at full potential
+#TODO recompile shader on change withour recreating compositor effect in inspector
 #TODO simple denoise (blur)
+#TODO remove fireflies
 #TODO advanced denoise (ray cone spot i.e. far samples are wider)
 #TODO GI (bounce and AO) boost on steep angles (togleable)
 #TODO more advanced denoise with samples accumulation from several frames
@@ -18,7 +21,7 @@ extends BaseCompositorEffect
 #TODO use multiple cameras setup to capture offscreen things
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
-const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/trace.glsl"
+const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"
 
 const USE_DEBUG_IMAGE = false
 
@@ -28,6 +31,8 @@ const DEBUG_IMAGE_BINDING := 1
 
 #TODO Set 2 bindings ?
 #TODO Specialization constant bindings?
+
+@export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
 @export  var settings : SSRTSettings :
 	set(value):
@@ -52,8 +57,9 @@ var trace_pipeline : RID
 var push_constant: PackedFloat32Array;
 
 var settings_dirty: bool = false
+var shaders_dirty: bool = false
 
-
+#called once on resource creation (when effect is added to list, or when scene loaded)
 func _initialize_resource() -> void:
 	print("from SSRT_CE::_initialize_resource()")
 	if not settings:
@@ -64,19 +70,20 @@ func _initialize_resource() -> void:
 	access_resolved_color = true
 	needs_normal_roughness = true
 		
-		
+#called once on resource creation (when effect is added to list, or when scene loaded) after resource is initialized
 func _initialize_render() -> void: 
 	print("from SSRT_CE::_initialize_render()")
-	trace_shader = create_shader(TRACE_SHADER_PATH)
+	_recompile_shaders()
 	if not trace_shader.is_valid():
 		push_error("from SSRT_CE::_initialize_render(). Failed to create trace shader")
 	
-	
+#called every frame before executing code for each view
 func _render_setup() -> void:
-	if not settings_ubo.is_valid() or settings_dirty:
+	if not settings_ubo.is_valid() or settings_dirty or shaders_dirty:
 		print("from SSRT_CE::_render_setup(). Settings are dirty")
 		create_settings_uniform_buffer()
 		create_trace_pipeline()
+		shaders_dirty = false
 
 	push_constant = _build_push_constant(render_size)
 		
@@ -172,3 +179,11 @@ func setup_settings() -> void:
 func make_settings_dirty() -> void:
 	print("from SSRT_CE::make_settings_dirty()")
 	settings_dirty = true
+	
+	
+	
+	
+func _recompile_shaders() -> void:
+	print("from SSRT_CE::_recompile_shaders()")
+	trace_shader = create_shader(TRACE_SHADER_PATH)
+	shaders_dirty = true
