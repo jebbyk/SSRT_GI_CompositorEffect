@@ -2,6 +2,7 @@
 class_name SSRT_CE
 extends BaseCompositorEffect
 
+#TODO retrieving shader compilation errors (if not yet?)
 #TODO reduce self-litting
 #TODO use includes at full potential
 #TODO recompile shader on change withour recreating compositor effect in inspector
@@ -22,6 +23,7 @@ extends BaseCompositorEffect
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
 const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"
+const MIX_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix.glsl"
 
 const USE_DEBUG_IMAGE = false
 
@@ -29,7 +31,10 @@ const USE_DEBUG_IMAGE = false
 const SETTINGS_UBO_BINDING := 0
 const DEBUG_IMAGE_BINDING := 1
 
-#TODO Set 2 bindings ?
+#set 2 binding
+const TRACE_IN_IMAGE_BINDING := 0
+const TRACE_OUT_IMAGE_BINDING := 1
+
 #TODO Specialization constant bindings?
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
@@ -43,7 +48,9 @@ const DEBUG_IMAGE_BINDING := 1
 
 var context : StringName = "SSRT_CE"
 
-#TODO texture a \ b
+var texture_a : StringName  = "TextureA"
+var texture_a_in_image_uniform : RDUniform
+var texture_a_out_image_uniform : RDUniform
 
 var depth_texture : StringName = "DepthTexture"
 var depth_image_uniform : RDUniform
@@ -53,6 +60,9 @@ var settings_ubo_uniform : RDUniform
 
 var trace_shader : RID
 var trace_pipeline : RID
+
+var mix_shader : RID
+var mix_pipeline : RID
 
 var push_constant: PackedFloat32Array;
 
@@ -74,8 +84,7 @@ func _initialize_resource() -> void:
 func _initialize_render() -> void: 
 	print("from SSRT_CE::_initialize_render()")
 	_recompile_shaders()
-	if not trace_shader.is_valid():
-		push_error("from SSRT_CE::_initialize_render(). Failed to create trace shader")
+		
 	
 #called every frame before executing code for each view
 func _render_setup() -> void:
@@ -83,11 +92,16 @@ func _render_setup() -> void:
 		print("from SSRT_CE::_render_setup(). Settings are dirty")
 		create_settings_uniform_buffer()
 		create_trace_pipeline()
+		create_mix_pipeline()
 		shaders_dirty = false
-
-	push_constant = _build_push_constant(render_size)
+	
+	if not render_scene_buffers.has_texture(context, texture_a):
+		create_textures()
 		
 
+	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
+		
+#TODO use unified function for pipeline creation
 func create_trace_pipeline() -> void:
 	if not trace_shader.is_valid():
 		push_error("from SSRT_CE::create_trace_pipeline() Trace shader is not valid")
@@ -96,6 +110,16 @@ func create_trace_pipeline() -> void:
 		rd.free_rid(trace_pipeline)
 		
 	trace_pipeline = create_pipeline(trace_shader)
+	
+
+func create_mix_pipeline() -> void:
+	if not mix_shader.is_valid():
+		push_error("from SSRT_CE:create_mix_pipeline() Mix shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(mix_pipeline):
+		rd.free_rid(mix_pipeline)
+	
+	mix_pipeline = create_pipeline(mix_shader)
 	
 	
 func _render_view(p_view : int) -> void:
@@ -108,12 +132,27 @@ func _render_view(p_view : int) -> void:
 	uniform_sets = [
 		scene_uniform_set,
 		settings_uniform_set,
+		[texture_a_out_image_uniform],
 	]
 	
 	run_compute_shader(
 		"SSRT: Trace",
 		trace_shader,
 		trace_pipeline,
+		uniform_sets,
+		push_constant,
+	)
+	
+	#overlay pass
+	uniform_sets = [
+		scene_uniform_set,
+		[texture_a_in_image_uniform]
+	]
+	
+	run_compute_shader(
+		"SSRT: mix",
+		mix_shader,
+		mix_pipeline,
 		uniform_sets,
 		push_constant,
 	)
@@ -158,6 +197,14 @@ func create_settings_uniform_buffer() -> void:
 	settings_ubo_uniform = get_uniform_buffer_uniform(settings_ubo, SETTINGS_UBO_BINDING)
 	settings_dirty = false
 		
+		
+func create_textures() -> void:
+	const TEXTURE_FORMAT := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	
+	var texture_a_image : RID = create_simple_texture(context, texture_a, TEXTURE_FORMAT)
+	texture_a_in_image_uniform = get_image_uniform(texture_a_image, TRACE_IN_IMAGE_BINDING)
+	texture_a_out_image_uniform = get_image_uniform(texture_a_image, TRACE_OUT_IMAGE_BINDING)
+		
 
 func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
 	push_constant= PackedFloat32Array()
@@ -186,4 +233,5 @@ func make_settings_dirty() -> void:
 func _recompile_shaders() -> void:
 	print("from SSRT_CE::_recompile_shaders()")
 	trace_shader = create_shader(TRACE_SHADER_PATH)
+	mix_shader = create_shader(MIX_SHADER_PATH)
 	shaders_dirty = true

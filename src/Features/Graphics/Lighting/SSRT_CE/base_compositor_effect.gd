@@ -133,6 +133,9 @@ func create_shader(p_file_path : String) -> RID:
 	var shader_spirv : RDShaderSPIRV = shader_file.get_spirv()
 	var shader : RID = rd.shader_create_from_spirv(shader_spirv)
 	add_rid_to_free(shader, "shader: %s" % p_file_path)
+	if not shader.is_valid():
+		push_error("from BaseCompositorEffect::create_shader(). Failed to create shader: %s" % p_file_path)
+		
 	return shader
 	
 
@@ -184,6 +187,7 @@ func create_simple_texture(
 			TEXTURE_LAYER_COUNT,
 			TEXTURE_MIPMAP_COUNT,
 			TEXTURE_IS_UNIQUE,
+			false
 	)
 
 	var texture_image : RID = render_scene_buffers.get_texture_slice(

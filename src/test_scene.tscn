@@ -146,9 +146,9 @@ adjustment_brightness = 1.26
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 16
+rays_amount = 8
 steps_per_ray = 64
-ray_length = 4.0
+ray_length = 10.0
 depth_affect_ray_length = false
 bounce_intensity = 2.0
 occlusion_intensity = 5.0
@@ -158,9 +158,12 @@ back_face_lighting = true
 resource_local_to_scene = false
 resource_name = ""
 enabled = true
-effect_callback_type = 4
-needs_motion_vectors = false
+effect_callback_type = 2
+access_resolved_color = true
+access_resolved_depth = true
+needs_motion_vectors = true
 needs_normal_roughness = true
+needs_separate_specular = true
 script = ExtResource("2_8pr8v")
 settings = SubResource("Resource_8pr8v")
 metadata/_custom_type_script = "uid://ccb43csyh10lr"
@@ -284,13 +287,13 @@ mesh = SubResource("BoxMesh_fihiy")
 skeleton = NodePath("../..")
 
 [node name="CSGBox3D4" type="CSGBox3D" parent="building" unique_id=1790775102]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.16624, 3.07805, 1.4983)
+transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.228709, 3.0490215, 1.4983)
 material_override = SubResource("StandardMaterial3D_fhamb")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D6" type="CSGBox3D" parent="building" unique_id=1707334297]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.16497, 1.97778, 1.46445)
+transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.244112, 2.3127618, 1.46445)
 material_override = SubResource("StandardMaterial3D_87h58")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)

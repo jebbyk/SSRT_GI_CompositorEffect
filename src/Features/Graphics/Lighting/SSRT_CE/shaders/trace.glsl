@@ -19,19 +19,23 @@ struct SSRTData {
 
 // Invocations in the (x, y, z) dimension
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+// Set 0
 layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 	SceneData data;
-	// SceneData prev_data;
+	SceneData prev_data;
 } scene;
-
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 
+// Set 1
 layout(set = 1, binding = 0, std140) uniform SSRTDataBlock {
 	SSRTData data;
 } settings;
 
+// Set 2
+layout(rgba16f, set = 2, binding = 1) uniform image2D out_image;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -110,20 +114,14 @@ void main() {
 		return;
 	}
 
-	//fragment
 	vec3 color = imageLoad(color_image, uv).rgb;
 	
 	float depth = get_linear_depth(uv);
-	
-	// imageStore(color_image, uv,  vec4(vec3(depth), 1.0));
-	// return;
-	
+
+	imageStore(out_image, uv, vec4(0, 0, 0, 1));
 	if(depth > settings.data.far_plane) {return;}
 	
 	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
-
-	// imageStore(color_image, uv,  vec4(normal, 1.0));
-	// return;
 
 	vec2 centredTexCoord = vec2(uv)/vec2(size) - 0.5;
 
@@ -187,9 +185,9 @@ void main() {
 	GI.a *= settings.data.occlusion_intensity * 0.2;
 
 	// imageStore(color_image, uv,  vec4(color + (color * GI.rgb) - (color * GI.a), 1.0));
-	imageStore(color_image, uv,  vec4(mix((color + color * GI.rgb), vec3(0), GI.a), 1.0));
+	// imageStore(color_image, uv,  vec4(mix((color + color * GI.rgb), vec3(0), GI.a), 1.0));
 	// imageStore(color_image, uv, vec4(color + GI.rgb * 0.1, 1.0));
-	// imageStore(out_image, uv, GI);
+	imageStore(out_image, uv, GI);
 
 }
 
