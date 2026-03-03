@@ -68,7 +68,7 @@ signal s_changed
 		sky_color = value
 		s_changed.emit()
 		
-@export var sky_color_intensity: float:
+@export_range(0.0, 100.0, 0.01) var sky_color_intensity: float:
 	set(value):
 		if sky_color_intensity == value:
 			return

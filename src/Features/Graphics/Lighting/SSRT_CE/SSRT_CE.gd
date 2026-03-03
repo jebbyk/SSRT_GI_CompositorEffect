@@ -1,7 +1,22 @@
 @tool
-
 class_name SSRT_CE
 extends BaseCompositorEffect
+
+#TODO use includes
+#TODO simple denoise (blur)
+#TODO advanced denoise (ray cone spot i.e. far samples are wider)
+#TODO GI (bounce and AO) boost on steep angles (togleable)
+#TODO more advanced denoise with samples accumulation from several frames
+#TODO even more advanced denosie with motion vectors taken into account
+#TODO optimize with BVH (ye it is possible to build one on a GPU)
+#TODO read GI probes from lit albedo, multiply GI to unlit albedo and only then mix it (now it is only possible with help of viewport rendering to a texture)
+#TODO rays miss to sky color and ground color
+#TODO ray miss to scene skybox
+#TODO retrieve metalicity buffer and use it to proper reflections
+#TODO do effect before transparents
+#TODO make it compatible with upscaling (screen quad version remains sharp even with fsr2.1 x0.5)
+#TODO use multiple cameras setup to capture offscreen things
+#TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
 const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/trace.glsl"
 
@@ -44,6 +59,10 @@ func _initialize_resource() -> void:
 	if not settings:
 		settings = SSRTSettings.new()
 		setup_settings()
+	
+	access_resolved_depth = true
+	access_resolved_color = true
+	needs_normal_roughness = true
 		
 		
 func _initialize_render() -> void: 
