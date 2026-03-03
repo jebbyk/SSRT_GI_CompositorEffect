@@ -122,6 +122,7 @@ tonemap_mode = 4
 tonemap_white = 3.98
 tonemap_agx_white = 15.99
 tonemap_agx_contrast = 1.34
+ssr_enabled = true
 ssr_max_steps = 512
 ssr_fade_in = 4.3550164e-05
 ssr_fade_out = 1.006707e-05
@@ -150,9 +151,10 @@ rays_amount = 8
 steps_per_ray = 64
 ray_length = 10.0
 depth_affect_ray_length = false
-bounce_intensity = 2.0
+bounce_intensity = 3.0
 occlusion_intensity = 5.0
 back_face_lighting = true
+z_thickness = 1.0
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -341,13 +343,25 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D30" type="CSGBox3D" parent="building" unique_id=2028908259]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.7535095, 3.2934325, 1.0961502)
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.8126564, 3.2934325, 1.0961502)
 material_override = SubResource("StandardMaterial3D_2s5vt")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D31" type="CSGBox3D" parent="building" unique_id=808322750]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.7535095, 1.4587789, 1.0961502)
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.8126564, 1.4587789, 1.0961502)
+material_override = SubResource("StandardMaterial3D_2s5vt")
+gi_lightmap_texel_scale = 8.0
+size = Vector3(1, 1.22879, 1)
+
+[node name="CSGBox3D32" type="CSGBox3D" parent="building" unique_id=1040452689]
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -6.6010323, 3.2934325, 1.0961502)
+material_override = SubResource("StandardMaterial3D_2s5vt")
+gi_lightmap_texel_scale = 8.0
+size = Vector3(1, 1.22879, 1)
+
+[node name="CSGBox3D33" type="CSGBox3D" parent="building" unique_id=2008043879]
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -6.6010323, 1.4587787, 1.0961502)
 material_override = SubResource("StandardMaterial3D_2s5vt")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
@@ -359,7 +373,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D11" type="CSGBox3D" parent="building" unique_id=1977674993]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -4.1966596, -1.828439, -11.87117)
+transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -3.288137, -1.828439, -11.87117)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -373,7 +387,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D25" type="CSGBox3D" parent="building" unique_id=663577053]
-transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -6.931526, -1.1136699, -18.374058)
+transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -2.4472375, -1.1136689, -18.55413)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -421,7 +435,7 @@ radial_segments = 24
 rings = 16
 
 [node name="Metal sphere" type="CSGSphere3D" parent="building" unique_id=1431893683]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.2566, 1.56709, -5.1981535)
+transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.2566, 1.56709, -5.0142946)
 material_override = SubResource("StandardMaterial3D_du0rd")
 gi_mode = 2
 radial_segments = 24
@@ -522,6 +536,7 @@ rings = 12
 transform = Transform3D(0.8513933, -0.04808851, -0.52231944, 0.36011788, -0.67042613, 0.64872515, -0.38137263, -0.7404165, -0.55347854, 5.7162585, 1.8341535, -3.6544616)
 visible = false
 light_color = Color(1, 0.945098, 0.854902, 1)
+light_energy = 1.5
 shadow_enabled = true
 shadow_bias = 0.01
 shadow_transmittance_bias = -3.441

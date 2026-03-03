@@ -47,18 +47,18 @@ void main() {
 
 	vec3 color = imageLoad(color_image, uv).rgb;
 
-    vec4 GI_TL = imageLoad(in_image, uv + ivec2(-2,-2));
-    vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-2));
-    vec4 GI_TR = imageLoad(in_image, uv + ivec2(2,-2));
-    vec4 GI_L = imageLoad(in_image, uv + ivec2(-2,0));
-    vec4 GI_C = imageLoad(in_image, uv + ivec2(0,0));
-    vec4 GI_R = imageLoad(in_image, uv + ivec2(2,0));
-    vec4 GI_BL = imageLoad(in_image, uv + ivec2(-2,2));
-    vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,2));
-    vec4 GI_BR = imageLoad(in_image, uv + ivec2(2,2));
+	vec4 GI_TL = imageLoad(in_image, uv + ivec2(-2,-2));
+	vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-2));
+	vec4 GI_TR = imageLoad(in_image, uv + ivec2(2,-2));
+	vec4 GI_L = imageLoad(in_image, uv + ivec2(-2,0));
+	vec4 GI_C = imageLoad(in_image, uv + ivec2(0,0));
+	vec4 GI_R = imageLoad(in_image, uv + ivec2(2,0));
+	vec4 GI_BL = imageLoad(in_image, uv + ivec2(-2,2));
+	vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,2));
+	vec4 GI_BR = imageLoad(in_image, uv + ivec2(2,2));
 
-    vec4 GI = GI_TL + GI_TC + GI_TR + GI_L + GI_C + GI_R + GI_BL + GI_BC + GI_BR;
-    GI /= 9.0;
+	vec4 GI = GI_TL + GI_TC + GI_TR + GI_L + GI_C + GI_R + GI_BL + GI_BC + GI_BR;
+	GI /= 9.0;
 
 	imageStore(color_image, uv, vec4(mix(color + color * GI.rgb, vec3(0), GI.a), 1.0));
 }
