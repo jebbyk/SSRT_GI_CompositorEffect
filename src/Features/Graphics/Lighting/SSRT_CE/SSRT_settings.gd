@@ -94,14 +94,14 @@ signal s_changed
 	
 	
 @export_category("Denoise settings")
-@export_range(1, 3, 1) var blur_kernel_size: int = 2:
+@export_range(1, 10, 1) var blur_kernel_size: int = 2:
 	set(value):
 		if blur_kernel_size == value:
 			return
 		blur_kernel_size = value
 		s_changed.emit()
 		
-@export_range(0, 3, 1) var blur_steps: int = 1:
+@export_range(0, 4, 1) var blur_steps: int = 1:
 	set(value):
 		if blur_steps == value:
 			return

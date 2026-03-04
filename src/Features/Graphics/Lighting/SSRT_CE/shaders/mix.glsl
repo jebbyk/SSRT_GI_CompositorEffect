@@ -49,6 +49,5 @@ void main() {
 
 	vec4 GI = imageLoad(in_image, uv);
 
-
 	imageStore(color_image, uv, vec4(mix(color + color * GI.rgb, vec3(0), GI.a), 1.0));
 }

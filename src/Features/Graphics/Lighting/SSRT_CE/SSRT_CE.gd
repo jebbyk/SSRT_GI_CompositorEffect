@@ -37,7 +37,8 @@ const DEBUG_IMAGE_BINDING := 1
 const TEXTURE_IN_IMAGE_BINDING := 0
 const TEXTURE_OUT_IMAGE_BINDING := 1
 
-#TODO Specialization constant bindings?
+#Specialization constant bindings
+const BLUR_OFFSET_CONSTANT_BINDING: int = 0
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
@@ -45,8 +46,6 @@ const TEXTURE_OUT_IMAGE_BINDING := 1
 	set(value):
 		settings = value
 		setup_settings()
-		
-#TODO Debug things?
 
 var context : StringName = "SSRT_CE"
 
@@ -68,7 +67,7 @@ var trace_shader : RID
 var trace_pipeline : RID
 
 var blur_shader : RID
-var blur_pipeline : RID
+var blur_pipelines : Array
 
 var mix_shader : RID
 var mix_pipeline : RID
@@ -101,17 +100,16 @@ func _render_setup() -> void:
 		print("from: SSRT_CE::_render_setup(). msg: Settings are dirty")
 		create_settings_uniform_buffer()
 		create_trace_pipeline()
-		create_blur_pipeline()
+		create_blur_pipelines()
 		create_mix_pipeline()
 		shaders_dirty = false
 	
 	if not render_scene_buffers.has_texture(context, texture_a):
 		create_textures()
 		
-
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
 		
-#TODO use unified function for pipeline creation
+		
 func create_trace_pipeline() -> void:
 	if not trace_shader.is_valid():
 		push_error("from: SSRT_CE::create_trace_pipeline(). msg: Trace shader is not valid")
@@ -122,14 +120,27 @@ func create_trace_pipeline() -> void:
 	trace_pipeline = create_pipeline(trace_shader)
 	
 	
-func create_blur_pipeline() -> void:
+func create_blur_pipelines() -> void:
+	print("from: SSRT_CE::create_blur_pipelines()")
+	for i in blur_pipelines.size():
+		if rd.compute_pipeline_is_valid(blur_pipelines[i]):
+			rd.free_rid(blur_pipelines[i])
+		
+	blur_pipelines.clear()
+	
+	var offset : int = settings.blur_kernel_size
+	for i in settings.blur_steps:
+		create_blur_pipeline(offset)
+		offset *= 3
+	
+	
+func create_blur_pipeline(offset : int) -> void:
+	print("from: SSRT_CE::create_blur_pipeline() offset: %s" % offset)
 	if not blur_shader.is_valid():
 		push_error("from: SSRT_CE::create_blur_pipeline(). msg: Blur shader is not valid")
 		
-	if rd.compute_pipeline_is_valid(blur_pipeline):
-		rd.free_rid(blur_pipeline)
-		
-	blur_pipeline = create_pipeline(blur_shader)
+	#TODO maybe use push constant for offsets instead?
+	blur_pipelines.append(create_pipeline(blur_shader, {BLUR_OFFSET_CONSTANT_BINDING : offset}))
 	
 
 func create_mix_pipeline() -> void:
@@ -143,6 +154,7 @@ func create_mix_pipeline() -> void:
 	
 	
 func _render_view(p_view : int) -> void:
+	print("from: SSRT_CE::_render_view()")
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
 	
@@ -165,14 +177,22 @@ func _render_view(p_view : int) -> void:
 	
 
 	#blur passes
-	var blur_distance: int = settings.blur_kernel_size
+	#TODO create SwapBufferObject class or use someting similar if it exists
+	var in_image_uniform : RDUniform = texture_a_in_image_uniform
+	var out_image_uniform : RDUniform = texture_b_out_image_uniform
 	
-	for i in settings.blur_steps:
+	for i in blur_pipelines.size():
+		
+		var blur_pipeline : RID = blur_pipelines[i]
+		
+		if not blur_pipeline.is_valid():
+			push_error("from: SSRT_CE::_render_view(). msg: No valid blur pass pipeline found for blur step: %" % i)
+			continue
 		
 		uniform_sets = [
 			scene_uniform_set,
 			settings_uniform_set,
-			[texture_a_in_image_uniform, texture_b_out_image_uniform]
+			[in_image_uniform, out_image_uniform]
 		]
 		
 		run_compute_shader(
@@ -183,13 +203,18 @@ func _render_view(p_view : int) -> void:
 			push_constant,
 		)
 		
-		blur_distance *= 3
+		if out_image_uniform == texture_a_out_image_uniform:
+			in_image_uniform = texture_a_in_image_uniform
+			out_image_uniform = texture_b_out_image_uniform
+		else:
+			in_image_uniform = texture_b_in_image_uniform
+			out_image_uniform = texture_a_out_image_uniform
 		
 	
 	#overlay pass
 	uniform_sets = [
 		scene_uniform_set,
-		[texture_b_in_image_uniform]
+		[in_image_uniform]
 	]
 	
 	run_compute_shader(
@@ -251,6 +276,10 @@ func create_textures() -> void:
 	var texture_a_image : RID = create_simple_texture(context, texture_a, TEXTURE_FORMAT)
 	texture_a_in_image_uniform = get_image_uniform(texture_a_image, TEXTURE_IN_IMAGE_BINDING)
 	texture_a_out_image_uniform = get_image_uniform(texture_a_image, TEXTURE_OUT_IMAGE_BINDING)
+	
+	var texture_b_image : RID = create_simple_texture(context, texture_b, TEXTURE_FORMAT)
+	texture_b_in_image_uniform = get_image_uniform(texture_b_image, TEXTURE_IN_IMAGE_BINDING)
+	texture_b_out_image_uniform = get_image_uniform(texture_b_image, TEXTURE_OUT_IMAGE_BINDING)
 		
 
 func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
@@ -276,5 +305,6 @@ func make_settings_dirty() -> void:
 func _recompile_shaders() -> void:
 	print("from: SSRT_CE::_recompile_shaders()")
 	trace_shader = create_shader(TRACE_SHADER_PATH)
+	blur_shader = create_shader(BLUR_SHADER_PATH)
 	mix_shader = create_shader(MIX_SHADER_PATH)
 	shaders_dirty = true

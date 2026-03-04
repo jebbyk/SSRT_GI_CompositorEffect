@@ -22,6 +22,9 @@ struct SSRTData {
 	bool back_face_lighting;
 };
 
+layout(constant_id = 0) const int OFFSET = 1;
+// const int OFFSET = 1;
+
 // Invocations in the (x, y, z) dimension
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -34,8 +37,14 @@ layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 
-// Set 1
-layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
+//Set 1
+layout(set = 1, binding = 0, std140) uniform SSRTDataBlock {
+	SSRTData data;
+} settings;
+
+// Set 2
+layout(rgba16f, set = 2, binding = 0) uniform image2D in_image;
+layout(rgba16f, set = 2, binding = 1) uniform image2D out_image;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -64,20 +73,18 @@ void main() {
 	float depth = get_linear_depth(uv);
 	if(depth > 1000.0) {return;}
 
-	vec3 color = imageLoad(color_image, uv).rgb;
-
-	vec4 GI_TL = imageLoad(in_image, uv + ivec2(-2,-2));
-	vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-2));
-	vec4 GI_TR = imageLoad(in_image, uv + ivec2(2,-2));
-	vec4 GI_L = imageLoad(in_image, uv + ivec2(-2,0));
+	vec4 GI_TL = imageLoad(in_image, uv + ivec2(-OFFSET,-OFFSET));
+	vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-OFFSET));
+	vec4 GI_TR = imageLoad(in_image, uv + ivec2(OFFSET,-OFFSET));
+	vec4 GI_L = imageLoad(in_image, uv + ivec2(-OFFSET,0));
 	vec4 GI_C = imageLoad(in_image, uv + ivec2(0,0));
-	vec4 GI_R = imageLoad(in_image, uv + ivec2(2,0));
-	vec4 GI_BL = imageLoad(in_image, uv + ivec2(-2,2));
-	vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,2));
-	vec4 GI_BR = imageLoad(in_image, uv + ivec2(2,2));
+	vec4 GI_R = imageLoad(in_image, uv + ivec2(OFFSET,0));
+	vec4 GI_BL = imageLoad(in_image, uv + ivec2(-OFFSET,OFFSET));
+	vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,OFFSET));
+	vec4 GI_BR = imageLoad(in_image, uv + ivec2(OFFSET,OFFSET));
 
 	vec4 GI = GI_TL + GI_TC + GI_TR + GI_L + GI_C + GI_R + GI_BL + GI_BC + GI_BR;
 	GI /= 9.0;
 
-	imageStore(color_image, uv, vec4(mix(color + color * GI.rgb, vec3(0), GI.a), 1.0));
+	imageStore(out_image, uv, GI);
 }
