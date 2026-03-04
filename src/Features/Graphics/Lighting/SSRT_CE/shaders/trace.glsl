@@ -5,6 +5,7 @@
 
 struct SSRTData {
 	vec4 sky_color;
+	
 	float rays_amount;
 	float steps_per_ray;
 	float bounce_intensity;
@@ -13,6 +14,10 @@ struct SSRTData {
 	float z_thickness;
 	float sky_color_intensity;
 	float far_plane;
+
+	int blur_kernel_size;
+	int blur_steps;
+
 	bool depth_affect_ray_length;
 	bool back_face_lighting;
 };
@@ -184,10 +189,6 @@ void main() {
 	GI.rgb *= settings.data.bounce_intensity * 10.0;
 	GI.a *= settings.data.occlusion_intensity * 0.2;
 
-	// imageStore(color_image, uv,  vec4(color + (color * GI.rgb) - (color * GI.a), 1.0));
-	// imageStore(color_image, uv,  vec4(mix((color + color * GI.rgb), vec3(0), GI.a), 1.0));
-	// imageStore(color_image, uv, vec4(color + GI.rgb * 0.1, 1.0));
 	imageStore(out_image, uv, GI);
-
 }
 

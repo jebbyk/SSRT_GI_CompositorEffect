@@ -4,6 +4,7 @@ extends Resource
 
 signal s_changed
 
+@export_category("Trace settings")
 @export_range(1, 1024, 1) var rays_amount: int = 4:
 	set(value):
 		if rays_amount == value:
@@ -11,12 +12,14 @@ signal s_changed
 		rays_amount = value
 		s_changed.emit()
 		
+		
 @export_range(1, 512, 1) var steps_per_ray: int = 32:
 	set(value):
 		if steps_per_ray == value:
 			return
 		steps_per_ray = value
 		s_changed.emit()
+	
 		
 @export_range(0.0, 20.0, 0.1) var ray_length: float = 1.0:
 	set(value):
@@ -25,12 +28,14 @@ signal s_changed
 		ray_length = value
 		s_changed.emit()
 		
+		
 @export var depth_affect_ray_length: bool = true:
 	set(value):
 		if depth_affect_ray_length == value:
 			return
 		depth_affect_ray_length = value
 		s_changed.emit()
+
 
 @export_range(0.0, 100.0, 0.01) var bounce_intensity: float = 1.0:
 	set(value):
@@ -47,12 +52,14 @@ signal s_changed
 		occlusion_intensity = value
 		s_changed.emit()
 		
+		
 @export var back_face_lighting: bool = false:
 	set(value):
 		if back_face_lighting == value:
 			return
 		back_face_lighting = value
 		s_changed.emit()
+		
 		
 @export var z_thickness: float = 0.5:
 	set(value):
@@ -61,12 +68,14 @@ signal s_changed
 		z_thickness = value
 		s_changed.emit()
 		
+		
 @export var sky_color: Color = Color.DEEP_SKY_BLUE:
 	set(value):
 		if sky_color == value:
 			return
 		sky_color = value
 		s_changed.emit()
+		
 		
 @export_range(0.0, 100.0, 0.01) var sky_color_intensity: float:
 	set(value):
@@ -75,6 +84,7 @@ signal s_changed
 		sky_color_intensity = value
 		s_changed.emit()
 		
+		
 @export var far_plane: float = 1000.0:
 	set(value):
 		if far_plane == value:
@@ -82,3 +92,18 @@ signal s_changed
 		far_plane = value
 		s_changed.emit()
 	
+	
+@export_category("Denoise settings")
+@export_range(1, 3, 1) var blur_kernel_size: int = 2:
+	set(value):
+		if blur_kernel_size == value:
+			return
+		blur_kernel_size = value
+		s_changed.emit()
+		
+@export_range(0, 3, 1) var blur_steps: int = 1:
+	set(value):
+		if blur_steps == value:
+			return
+		blur_steps = value
+		s_changed.emit()

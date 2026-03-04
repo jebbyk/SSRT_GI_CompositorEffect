@@ -3,6 +3,25 @@
 
 #include "includes/scene_data.glsl"
 
+struct SSRTData {
+	vec4 sky_color;
+	
+	float rays_amount;
+	float steps_per_ray;
+	float bounce_intensity;
+	float occlusion_intensity;
+	float ray_length;
+	float z_thickness;
+	float sky_color_intensity;
+	float far_plane;
+
+	int blur_kernel_size;
+	int blur_steps;
+
+	bool depth_affect_ray_length;
+	bool back_face_lighting;
+};
+
 // Invocations in the (x, y, z) dimension
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -47,8 +66,18 @@ void main() {
 
 	vec3 color = imageLoad(color_image, uv).rgb;
 
-	vec4 GI = imageLoad(in_image, uv);
+	vec4 GI_TL = imageLoad(in_image, uv + ivec2(-2,-2));
+	vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-2));
+	vec4 GI_TR = imageLoad(in_image, uv + ivec2(2,-2));
+	vec4 GI_L = imageLoad(in_image, uv + ivec2(-2,0));
+	vec4 GI_C = imageLoad(in_image, uv + ivec2(0,0));
+	vec4 GI_R = imageLoad(in_image, uv + ivec2(2,0));
+	vec4 GI_BL = imageLoad(in_image, uv + ivec2(-2,2));
+	vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,2));
+	vec4 GI_BR = imageLoad(in_image, uv + ivec2(2,2));
 
+	vec4 GI = GI_TL + GI_TC + GI_TR + GI_L + GI_C + GI_R + GI_BL + GI_BC + GI_BR;
+	GI /= 9.0;
 
 	imageStore(color_image, uv, vec4(mix(color + color * GI.rgb, vec3(0), GI.a), 1.0));
 }

@@ -147,14 +147,15 @@ adjustment_brightness = 1.26
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 8
+rays_amount = 1
 steps_per_ray = 64
 ray_length = 10.0
 depth_affect_ray_length = false
-bounce_intensity = 3.0
-occlusion_intensity = 5.0
+occlusion_intensity = 0.0
 back_face_lighting = true
 z_thickness = 1.0
+kernel_size = null
+blur_steps = null
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -277,7 +278,7 @@ mesh = SubResource("QuadMesh_u8xit")
 skeleton = NodePath("../..")
 
 [node name="big blue panel" type="MeshInstance3D" parent="building" unique_id=1546940129]
-transform = Transform3D(17.6173, 0, -1.14923e-07, 0, 5.21393, 0, 3.0803e-06, 0, 0.657283, -7.38994, 3.15927, -13.2482)
+transform = Transform3D(14.864686, 0, -1.1492295e-07, 0, 5.21393, 0, 2.599019e-06, 0, 0.6572827, -3.3721185, 3.15927, -13.018173)
 material_override = SubResource("StandardMaterial3D_5dwf6")
 mesh = SubResource("QuadMesh_u8xit")
 skeleton = NodePath("../..")
@@ -387,7 +388,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D25" type="CSGBox3D" parent="building" unique_id=663577053]
-transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -2.4472375, -1.1136689, -18.55413)
+transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -2.980763, -1.1136689, -18.159088)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
