@@ -165,8 +165,9 @@ func _render_view(p_view : int) -> void:
 	
 
 	#blur passes
+	var blur_distance: int = settings.blur_kernel_size
+	
 	for i in settings.blur_steps:
-		var distacne: int = settings.kernel_size
 		
 		uniform_sets = [
 			scene_uniform_set,
@@ -181,6 +182,8 @@ func _render_view(p_view : int) -> void:
 			uniform_sets,
 			push_constant,
 		)
+		
+		blur_distance *= 3
 		
 	
 	#overlay pass

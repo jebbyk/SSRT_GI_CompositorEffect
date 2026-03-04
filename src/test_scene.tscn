@@ -154,7 +154,7 @@ depth_affect_ray_length = false
 occlusion_intensity = 0.0
 back_face_lighting = true
 z_thickness = 1.0
-kernel_size = null
+blur_kernel_size = null
 blur_steps = null
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
