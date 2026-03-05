@@ -132,7 +132,6 @@ ssr_max_steps = 512
 ssr_fade_in = 4.3550164e-05
 ssr_fade_out = 1.006707e-05
 ssr_depth_tolerance = 2.11
-ssao_enabled = true
 ssao_radius = 0.19
 ssil_radius = 6.81
 ssil_intensity = 0.5
@@ -151,14 +150,13 @@ adjustment_brightness = 1.26
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
 rays_amount = 8
-steps_per_ray = 128
+steps_per_ray = 64
 ray_length = 10.0
 depth_affect_ray_length = false
 bounce_intensity = 5.0
 occlusion_intensity = 5.0
-back_face_lighting = true
 z_thickness = 1.0
-blur_kernel_size = 3
+blur_kernel_size = 4
 blur_steps = 2
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -385,7 +383,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D34" type="CSGBox3D" parent="building" unique_id=782321263]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -2.7927995, -1.828439, -11.828988)
+transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.1305904, -1.8284389, -11.828988)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -434,7 +432,7 @@ radial_segments = 16
 rings = 8
 
 [node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -8.008862, 1.0689127, -2.6116514)
+transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.089468, 1.0689127, -2.4988945)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 radial_segments = 24
 rings = 16

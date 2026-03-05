@@ -52,7 +52,8 @@ layout(push_constant, std430) uniform Params {
 } params;
 
 
-float divider = 0;
+float divider = 0.001;
+ivec2 size;
 
 float get_linear_depth(ivec2 uv)
 {
@@ -78,21 +79,40 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 	//return vec4(p_normal_roughness.xyz, 1.0);
 }
 
-vec4 testSample(ivec2 uv, vec3 normal_c, float depth_c)
+vec4 testSample(ivec2 uv, ivec2 offset, vec3 normal_c, float depth_c)
 {
-	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
-	float depth = get_linear_depth(uv);
+	vec2 centredTexCoordC = vec2(uv)/vec2(size) - 0.5;
+	vec3 position_c = vec3(
+			centredTexCoordC.x * depth_c,
+			centredTexCoordC.y * depth_c,
+			depth_c
+		);
+
+	float depth = get_linear_depth(uv + offset);
+
+	vec2 centredTexCoordB = vec2(uv + offset)/vec2(size) - 0.5;
+	vec3 position_b = vec3(
+			centredTexCoordB.x * depth,
+			centredTexCoordB.y * depth,
+			depth
+		);
+
+	vec3 direction = normalize(position_b - position_c);
+	
+	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv + offset)).xyz;
 	
 	if(dot(normal, normal_c) < 0.9) return vec4(0);
+	if(dot(normal_c, direction) < -0.33) return vec4(0);
+	if(dot(normal_c, direction) > 0.33) return vec4(0);
 	
 	divider += 1.0;
 	
-	return imageLoad(in_image, uv);
+	return imageLoad(in_image, uv + offset);
 }
 
 void main() {
 	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
-	ivec2 size = ivec2(params.raster_size);
+	size = ivec2(params.raster_size);
 
 	if(uv.x >= size.x || uv.y >= size.y) {
 		return;
@@ -105,17 +125,17 @@ void main() {
 
 	vec4 GI = vec4(0.0);
 
-	GI += testSample(uv + ivec2(-OFFSET, -OFFSET), normal, depth);
-	GI += testSample(uv + ivec2(0, -OFFSET), normal, depth);
-	GI += testSample(uv + ivec2(OFFSET, -OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(-OFFSET, -OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(0, -OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(OFFSET, -OFFSET), normal, depth);
 
-	GI += testSample(uv + ivec2(-OFFSET, 0), normal, depth);
-	GI += testSample(uv + ivec2(0, 0), normal, depth);
-	GI += testSample(uv + ivec2(OFFSET, 0), normal, depth);
+	GI += testSample(uv, ivec2(-OFFSET, 0), normal, depth);
+	GI += testSample(uv, ivec2(0, 0), normal, depth);
+	GI += testSample(uv, ivec2(OFFSET, 0), normal, depth);
 	
-	GI += testSample(uv + ivec2(-OFFSET, OFFSET), normal, depth);
-	GI += testSample(uv + ivec2(0, OFFSET), normal, depth);
-	GI += testSample(uv + ivec2(OFFSET, OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(-OFFSET, OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(0, OFFSET), normal, depth);
+	GI += testSample(uv, ivec2(OFFSET, OFFSET), normal, depth);
 
 	GI /= divider;
 
