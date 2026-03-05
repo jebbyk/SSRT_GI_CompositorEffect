@@ -186,7 +186,7 @@ func _render_view(p_view : int) -> void:
 		var blur_pipeline : RID = blur_pipelines[i]
 		
 		if not blur_pipeline.is_valid():
-			push_error("from: SSRT_CE::_render_view(). msg: No valid blur pass pipeline found for blur step: %" % i)
+			push_error("from: SSRT_CE::_render_view(). msg: No valid blur pass pipeline found for blur step: %s" % i)
 			continue
 		
 		uniform_sets = [

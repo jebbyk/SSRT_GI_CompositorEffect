@@ -62,6 +62,31 @@ float get_linear_depth(ivec2 uv)
 	return -view.z;
 }
 
+vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
+	float roughness = p_normal_roughness.w;
+	if (roughness > 0.5) {
+		roughness = 1.0 - roughness;
+	}
+	roughness /= (127.0 / 255.0);
+	
+	//return vec4(normalize(p_normal_roughness.xyz * 2.0 - 1.0) * 0.5 + 0.5, roughness);
+	vec4 nr = vec4(normalize(p_normal_roughness.xyz * 2.0 - 1.0), roughness);
+	nr.gb = -nr.gb;
+	return nr;
+	//return vec4(p_normal_roughness.xyz, 1.0);
+}
+
+vec4 testSample(ivec2 uv, vec3 normal_c, float depth_c)
+{
+	// vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
+	// float depth = get_linear_depth(uv);
+	
+	// if(dot(normal, normal_c) < 0.9) return vec4(0);
+	// if(mod(depth, depth_c) > 64.0) return vec4(0);
+	
+	return imageLoad(in_image, uv);
+}
+
 void main() {
 	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
 	ivec2 size = ivec2(params.raster_size);
@@ -73,17 +98,22 @@ void main() {
 	float depth = get_linear_depth(uv);
 	if(depth > 1000.0) {return;}
 
-	vec4 GI_TL = imageLoad(in_image, uv + ivec2(-OFFSET,-OFFSET));
-	vec4 GI_TC = imageLoad(in_image, uv + ivec2(0,-OFFSET));
-	vec4 GI_TR = imageLoad(in_image, uv + ivec2(OFFSET,-OFFSET));
-	vec4 GI_L = imageLoad(in_image, uv + ivec2(-OFFSET,0));
-	vec4 GI_C = imageLoad(in_image, uv + ivec2(0,0));
-	vec4 GI_R = imageLoad(in_image, uv + ivec2(OFFSET,0));
-	vec4 GI_BL = imageLoad(in_image, uv + ivec2(-OFFSET,OFFSET));
-	vec4 GI_BC = imageLoad(in_image, uv + ivec2(0,OFFSET));
-	vec4 GI_BR = imageLoad(in_image, uv + ivec2(OFFSET,OFFSET));
+	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
 
-	vec4 GI = GI_TL + GI_TC + GI_TR + GI_L + GI_C + GI_R + GI_BL + GI_BC + GI_BR;
+	vec4 GI = vec4(0.0);
+
+	GI += testSample(uv + ivec2(-OFFSET, -OFFSET), normal, depth);
+	GI += testSample(uv + ivec2(0, -OFFSET), normal, depth);
+	GI += testSample(uv + ivec2(OFFSET, -OFFSET), normal, depth);
+
+	GI += testSample(uv + ivec2(-OFFSET, 0), normal, depth);
+	GI += testSample(uv + ivec2(0, 0), normal, depth);
+	GI += testSample(uv + ivec2(OFFSET, 0), normal, depth);
+	
+	GI += testSample(uv + ivec2(-OFFSET, OFFSET), normal, depth);
+	GI += testSample(uv + ivec2(0, OFFSET), normal, depth);
+	GI += testSample(uv + ivec2(OFFSET, OFFSET), normal, depth);
+
 	GI /= 9.0;
 
 	imageStore(out_image, uv, GI);

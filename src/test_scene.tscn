@@ -127,7 +127,6 @@ ssr_max_steps = 512
 ssr_fade_in = 4.3550164e-05
 ssr_fade_out = 1.006707e-05
 ssr_depth_tolerance = 2.11
-ssao_enabled = true
 ssao_radius = 2.2
 ssao_detail = 1.04
 ssil_radius = 6.81
@@ -150,10 +149,10 @@ rays_amount = 8
 steps_per_ray = 64
 ray_length = 10.0
 depth_affect_ray_length = false
-bounce_intensity = 3.0
+bounce_intensity = 5.0
 occlusion_intensity = 5.0
 z_thickness = 1.0
-blur_kernel_size = 4
+blur_kernel_size = 3
 blur_steps = 2
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -415,7 +414,7 @@ radial_segments = 16
 rings = 8
 
 [node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -6.538563, 1.1474214, -2.6055324)
+transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.7307854, 1.1474214, -2.791268)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 radial_segments = 24
 rings = 16
@@ -534,7 +533,6 @@ rings = 12
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8135105, -0.04787883, -0.57957655, 0.40380162, -0.6706865, 0.6221931, -0.41850388, -0.7401943, -0.5262767, 5.7162585, 1.8341535, -3.6544616)
-visible = false
 light_color = Color(1, 0.945098, 0.854902, 1)
 light_energy = 1.5
 shadow_enabled = true
