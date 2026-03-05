@@ -68,6 +68,11 @@ metallic_specular = 0.0
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gm1f2"]
 metallic_specular = 0.0
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8pr8v"]
+transparency = 1
+albedo_color = Color(1, 1, 1, 0.88235295)
+roughness = 0.0
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_81uxq"]
 metallic_specular = 0.0
 roughness = 0.0
@@ -146,7 +151,7 @@ adjustment_brightness = 1.26
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
 rays_amount = 8
-steps_per_ray = 64
+steps_per_ray = 128
 ray_length = 10.0
 depth_affect_ray_length = false
 bounce_intensity = 5.0
@@ -289,13 +294,13 @@ mesh = SubResource("BoxMesh_fihiy")
 skeleton = NodePath("../..")
 
 [node name="CSGBox3D4" type="CSGBox3D" parent="building" unique_id=1790775102]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.228709, 3.0490215, 1.4983)
+transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.2594569, 3.3051968, 1.4983)
 material_override = SubResource("StandardMaterial3D_fhamb")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D6" type="CSGBox3D" parent="building" unique_id=1707334297]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.244112, 2.3127618, 1.46445)
+transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.2574925, 2.3395085, 1.46445)
 material_override = SubResource("StandardMaterial3D_87h58")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
@@ -379,6 +384,20 @@ gi_mode = 2
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
+[node name="CSGBox3D34" type="CSGBox3D" parent="building" unique_id=782321263]
+transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -2.7927995, -1.828439, -11.828988)
+material_override = SubResource("StandardMaterial3D_gm1f2")
+gi_mode = 2
+gi_lightmap_texel_scale = 8.0
+size = Vector3(1, 1.22879, 1)
+
+[node name="transparent pannel" type="CSGBox3D" parent="building" unique_id=1227382355]
+transform = Transform3D(-1.8000748e-07, 0.201422, 0, -4.118088, -8.80444e-09, 0, 0, 0, 4.284111, -7.6211834, 2.6774201, -10.869936)
+material_override = SubResource("StandardMaterial3D_8pr8v")
+gi_mode = 2
+gi_lightmap_texel_scale = 8.0
+size = Vector3(1, 1.22879, 1)
+
 [node name="CSGBox3D23" type="CSGBox3D" parent="building" unique_id=493621915]
 transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -4.857858, -0.6314235, -1.165185)
 material_override = SubResource("StandardMaterial3D_gm1f2")
@@ -415,7 +434,7 @@ radial_segments = 16
 rings = 8
 
 [node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.9031873, 1.1474214, -2.539428)
+transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -8.008862, 1.0689127, -2.6116514)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 radial_segments = 24
 rings = 16

@@ -2,7 +2,8 @@
 class_name SSRT_CE
 extends BaseCompositorEffect
 
-#TODO use separate z_thickness for AO and bounce
+#TODO improve bad sample canceling (on alligning surfaces)
+#TODO use separate z_thickness for AO and bounce?
 #TODO retrieving shader compilation errors (if not yet?)
 #TODO reduce self-litting\occluding
 #TODO use includes at full potential
@@ -16,7 +17,6 @@ extends BaseCompositorEffect
 #TODO rays miss to sky color and ground color
 #TODO ray miss to scene skybox
 #TODO retrieve metalicity buffer and use it to proper reflections
-#TODO do effect before transparents
 #TODO make it compatible with upscaling (screen quad version remains sharp even with fsr2.1 x0.5)
 #TODO use multiple cameras setup to capture offscreen things
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
