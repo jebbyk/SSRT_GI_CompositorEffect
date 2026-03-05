@@ -52,6 +52,8 @@ layout(push_constant, std430) uniform Params {
 } params;
 
 
+float divider = 0;
+
 float get_linear_depth(ivec2 uv)
 {
 	float depth = imageLoad(depth_image, uv).r;
@@ -78,11 +80,12 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 
 vec4 testSample(ivec2 uv, vec3 normal_c, float depth_c)
 {
-	// vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
-	// float depth = get_linear_depth(uv);
+	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv)).xyz;
+	float depth = get_linear_depth(uv);
 	
-	// if(dot(normal, normal_c) < 0.9) return vec4(0);
-	// if(mod(depth, depth_c) > 64.0) return vec4(0);
+	if(dot(normal, normal_c) < 0.9) return vec4(0);
+	
+	divider += 1.0;
 	
 	return imageLoad(in_image, uv);
 }
@@ -114,7 +117,7 @@ void main() {
 	GI += testSample(uv + ivec2(0, OFFSET), normal, depth);
 	GI += testSample(uv + ivec2(OFFSET, OFFSET), normal, depth);
 
-	GI /= 9.0;
+	GI /= divider;
 
 	imageStore(out_image, uv, GI);
 }

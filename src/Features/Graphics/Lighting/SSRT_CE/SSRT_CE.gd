@@ -2,13 +2,11 @@
 class_name SSRT_CE
 extends BaseCompositorEffect
 
-#TODO fix initialization process so there is no need to reload entire project on each shaders recompilation (problem is only on windows)
+#TODO use separate z_thickness for AO and bounce
 #TODO retrieving shader compilation errors (if not yet?)
 #TODO reduce self-litting\occluding
 #TODO use includes at full potential
-#TODO controllable simple denoise (blur) passes count  
 #TODO cancel blur pixel if depth is to far from original
-#TODO remove fireflies (if needed)
 #TODO advanced denoise (ray cone spot i.e. far samples are wider)
 #TODO GI (bounce and AO) boost on steep angles (togleable)
 #TODO more advanced denoise with samples accumulation from several frames
