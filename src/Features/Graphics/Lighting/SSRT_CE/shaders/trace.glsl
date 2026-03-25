@@ -14,6 +14,7 @@ struct SSRTData {
 	float z_thickness;
 	float sky_color_intensity;
 	float far_plane;
+	float normal_treshold;
 
 	int blur_kernel_size;
 	int blur_steps;
@@ -172,12 +173,15 @@ void main() {
 
 			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + settings.data.z_thickness) {
 				GI.a += 1.0;
-				vec3 probeTestNormal = normal_roughness_compatibility(imageLoad(normal_roughness_image, ivec2(newUvCoord * vec2(size)))).xyz;
+				vec3 probeTestNormal = normal_roughness_compatibility(
+					imageLoad(normal_roughness_image, ivec2(newUvCoord * vec2(size)))
+				).xyz;
 				if(!settings.data.back_face_lighting) {
-					if(dot(probeTestNormal, probeDirection) > 0.0) {
+					if(dot(probeTestNormal, probeDirection) > -settings.data.normal_treshold / 10.0) {
 						break;
 					}
 				}
+				
 				vec3 probeTestColor = imageLoad(color_image, ivec2(newUvCoord * vec2(size))).rgb;
 				GI.rgb += probeTestColor;
 				break;

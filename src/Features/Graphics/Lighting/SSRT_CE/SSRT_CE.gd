@@ -253,6 +253,7 @@ func create_settings_uniform_buffer() -> void:
 		settings.z_thickness,
 		settings.sky_color_intensity,
 		settings.far_plane,
+		settings.normal_treshold,
 		
 		#int
 		settings.blur_kernel_size,

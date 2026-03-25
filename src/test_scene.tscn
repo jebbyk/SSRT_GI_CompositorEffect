@@ -6,7 +6,6 @@
 [ext_resource type="Script" uid="uid://b30a24s45nobl" path="res://Features/Testing/camera.gd" id="2_48kf0"]
 [ext_resource type="Texture2D" uid="uid://bj8ttgg0qulg1" path="res://Features/Graphics/Lighting/SSRT_sp/bluenoise.png" id="2_xhejr"]
 [ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_buypi"]
-[ext_resource type="VoxelGIData" uid="uid://d0gesferqakuj" path="res://test_scene.VoxelGI_data.res" id="4_2nij2"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4m2n"]
 cull_mode = 2
@@ -134,7 +133,7 @@ ssr_fade_out = 1.006707e-05
 ssr_depth_tolerance = 2.11
 ssao_radius = 0.19
 ssil_radius = 6.81
-ssil_intensity = 0.5
+ssil_intensity = 8.88
 ssil_sharpness = 1.0
 sdfgi_read_sky_light = false
 sdfgi_bounce_feedback = 0.0
@@ -151,12 +150,11 @@ adjustment_brightness = 1.26
 script = ExtResource("3_buypi")
 rays_amount = 8
 steps_per_ray = 64
-ray_length = 10.0
+ray_length = 4.0
 depth_affect_ray_length = false
 bounce_intensity = 5.0
 occlusion_intensity = 5.0
-z_thickness = 1.0
-blur_kernel_size = 4
+blur_kernel_size = 3
 blur_steps = 2
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -370,7 +368,13 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D10" type="CSGBox3D" parent="building" unique_id=1335667674]
-transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -7.02362, 0.642568, -3.41985)
+transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -2.556432, 0.6425675, -6.5343137)
+material_override = SubResource("StandardMaterial3D_5vfve")
+gi_lightmap_texel_scale = 8.0
+size = Vector3(1, 1.22879, 1)
+
+[node name="CSGBox3D35" type="CSGBox3D" parent="building" unique_id=1717740782]
+transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -5.012249, 0.6425675, -6.458882)
 material_override = SubResource("StandardMaterial3D_5vfve")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
@@ -432,7 +436,7 @@ radial_segments = 16
 rings = 8
 
 [node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.089468, 1.0689127, -2.4988945)
+transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.8500237, 1.0689125, -2.562494)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 radial_segments = 24
 rings = 16
@@ -525,10 +529,10 @@ gi_lightmap_texel_scale = 10.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D14" type="CSGBox3D" parent="building" unique_id=702827387]
-transform = Transform3D(-4.50516, -0.0239456, 0.000220162, -0.0199167, 5.4132, 0.000408201, -0.00546216, 0.0120408, -0.183077, 8.51862, 1.53621, 0.870895)
+transform = Transform3D(-5.119649, -0.0239456, 0.000220162, -0.022633273, 5.4132, 0.000408201, -0.0062071807, 0.0120408, -0.183077, 8.748604, 1.5372267, 0.87117386)
 material_override = SubResource("StandardMaterial3D_pb2jm")
 gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
+size = Vector3(1.0898438, 1.22879, 1)
 
 [node name="CSGBox3D5" type="CSGBox3D" parent="building" unique_id=1259804694]
 transform = Transform3D(-0.017131016, 0.012123104, -0.18273754, -0.062467195, 5.450201, 0.00040744414, 14.130085, 0.024109278, -0.00021974581, -4.0084324, 1.7481503, 3.9357123)
@@ -549,10 +553,34 @@ material_override = SubResource("StandardMaterial3D_5qgeb")
 radial_segments = 16
 rings = 12
 
+[node name="SpotLight3D" type="SpotLight3D" parent="building" unique_id=654206952]
+transform = Transform3D(0.9998599, 0, 0.016736917, 0, 1, 0, -0.016736917, 0, 0.9998599, -0.94565153, 1.7602876, 2.8029852)
+light_energy = 6.0
+light_indirect_energy = 0.0
+light_volumetric_fog_energy = 0.0
+light_specular = 0.0
+shadow_enabled = true
+
+[node name="SpotLight3D2" type="SpotLight3D" parent="building" unique_id=1992642736]
+transform = Transform3D(-0.944675, -0.016315568, -0.3276023, 0.3246592, 0.0958485, -0.9409622, 0.0467526, -0.99526227, -0.08524855, 8.983447, 3.397127, 1.5316429)
+light_energy = 3.0
+light_indirect_energy = 0.0
+light_volumetric_fog_energy = 0.0
+light_specular = 0.0
+shadow_enabled = true
+spot_range = 5.333
+spot_angle = 21.28
+
+[node name="OmniLight3D" type="OmniLight3D" parent="building" unique_id=1192902031]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.971227, 2.6452222, 1.6709034)
+light_color = Color(1, 0.5882353, 0, 1)
+light_energy = 3.0
+omni_range = 1.0
+
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8135105, -0.04787883, -0.57957655, 0.40380162, -0.6706865, 0.6221931, -0.41850388, -0.7401943, -0.5262767, 5.7162585, 1.8341535, -3.6544616)
 visible = false
-light_color = Color(1, 0.945098, 0.854902, 1)
+light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
 shadow_bias = 0.01
@@ -587,9 +615,10 @@ skeleton = NodePath("../..")
 libraries/ = SubResource("AnimationLibrary_oct6a")
 autoplay = &"fly_through"
 
-[node name="VoxelGI" type="VoxelGI" parent="." unique_id=59955942]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.623413, 0, -5.2053833)
-visible = false
-subdiv = 2
-size = Vector3(44.191162, 20, 37.125366)
-data = ExtResource("4_2nij2")
+[node name="SubViewport" type="SubViewport" parent="." unique_id=731899120]
+debug_draw = 1
+use_hdr_2d = true
+render_target_update_mode = 4
+
+[node name="Camera3D" type="Camera3D" parent="SubViewport" unique_id=1930777123]
+transform = Transform3D(-0.98710275, 0.022279931, -0.1585301, 0, 0.9902681, 0.13917297, 0.16008806, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)

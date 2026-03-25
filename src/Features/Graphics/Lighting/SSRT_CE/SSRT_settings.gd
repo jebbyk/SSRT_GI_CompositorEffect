@@ -68,6 +68,14 @@ signal s_changed
 		z_thickness = value
 		s_changed.emit()
 		
+
+@export_range(0.0, 1.0, 0.001) var normal_treshold: float = 0.5:
+	set(value):
+		if normal_treshold == value:
+			return
+		normal_treshold = value
+		s_changed.emit()
+		
 		
 @export var sky_color: Color = Color.DEEP_SKY_BLUE:
 	set(value):

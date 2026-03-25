@@ -14,6 +14,7 @@ struct SSRTData {
 	float z_thickness;
 	float sky_color_intensity;
 	float far_plane;
+	float normal_treshold;
 
 	int blur_kernel_size;
 	int blur_steps;
