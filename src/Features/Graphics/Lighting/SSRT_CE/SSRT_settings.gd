@@ -115,3 +115,17 @@ signal s_changed
 			return
 		blur_steps = value
 		s_changed.emit()
+
+@export_range(0.0, 1.0, 0.001) var blur_normal_treshold: float = 0.5:
+	set(value):
+		if blur_normal_treshold == value:
+			return
+		blur_normal_treshold = value
+		s_changed.emit()
+
+@export_range(0.0, 1.0, 0.001) var blur_plane_treshold: float = 0.5:
+	set(value):
+		if blur_plane_treshold == value:
+			return
+		blur_plane_treshold = value
+		s_changed.emit()

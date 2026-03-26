@@ -92,6 +92,10 @@ metallic = 1.0
 metallic_specular = 1.0
 roughness = 0.0
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7cbxl"]
+albedo_color = Color(1, 0.5773793, 0.33141887, 1)
+roughness = 0.0
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pb2jm"]
 metallic_specular = 0.0
 
@@ -150,12 +154,14 @@ adjustment_brightness = 1.26
 script = ExtResource("3_buypi")
 rays_amount = 8
 steps_per_ray = 64
-ray_length = 4.0
+ray_length = 8.0
 depth_affect_ray_length = false
 bounce_intensity = 5.0
 occlusion_intensity = 5.0
 blur_kernel_size = 3
 blur_steps = 2
+blur_normal_treshold = 0.5
+blur_plane_treshold = 0.3
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -344,7 +350,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D30" type="CSGBox3D" parent="building" unique_id=2028908259]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.8126564, 3.2934325, 1.0961502)
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.96559376, -7.8126564, 3.2934325, 1.1785715)
 material_override = SubResource("StandardMaterial3D_2s5vt")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
@@ -356,7 +362,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D32" type="CSGBox3D" parent="building" unique_id=1040452689]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -6.6010323, 3.2934325, 1.0961502)
+transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.73294467, -6.6010323, 3.2934325, 1.0961502)
 material_override = SubResource("StandardMaterial3D_2s5vt")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
@@ -408,7 +414,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D25" type="CSGBox3D" parent="building" unique_id=663577053]
-transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -2.980763, -1.1136689, -18.159088)
+transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -3.8908448, -1.1136684, -18.54747)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -436,7 +442,7 @@ radial_segments = 16
 rings = 8
 
 [node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.8500237, 1.0689125, -2.562494)
+transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -7.8500237, 1.0689125, -6.704191)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 radial_segments = 24
 rings = 16
@@ -456,8 +462,22 @@ radial_segments = 24
 rings = 16
 
 [node name="Metal sphere" type="CSGSphere3D" parent="building" unique_id=1431893683]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.2566, 1.56709, -5.0142946)
+transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.729391, 1.56709, -4.1491055)
 material_override = SubResource("StandardMaterial3D_du0rd")
+gi_mode = 2
+radial_segments = 24
+rings = 16
+
+[node name="Glassy sphere" type="CSGSphere3D" parent="building" unique_id=889343382]
+transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.729391, 1.56709, -6.490368)
+material_override = SubResource("StandardMaterial3D_7cbxl")
+gi_mode = 2
+radial_segments = 24
+rings = 16
+
+[node name="Glassy sphere2" type="CSGSphere3D" parent="building" unique_id=1400964751]
+transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -14.996246, 1.56709, 9.3438)
+material_override = SubResource("StandardMaterial3D_7cbxl")
 gi_mode = 2
 radial_segments = 24
 rings = 16
@@ -535,7 +555,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1.0898438, 1.22879, 1)
 
 [node name="CSGBox3D5" type="CSGBox3D" parent="building" unique_id=1259804694]
-transform = Transform3D(-0.017131016, 0.012123104, -0.18273754, -0.062467195, 5.450201, 0.00040744414, 14.130085, 0.024109278, -0.00021974581, -4.0084324, 1.7481503, 3.9357123)
+transform = Transform3D(-0.017131016, 0.012123104, -0.05716991, -0.062467195, 5.450201, 0.00012746995, 14.130085, 0.024109278, -6.874804e-05, -4.0084324, 1.7481503, 3.9357123)
 material_override = ExtResource("1_coq8p")
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.0625687, 1)

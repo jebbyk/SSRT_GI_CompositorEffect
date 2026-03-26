@@ -15,6 +15,8 @@ struct SSRTData {
 	float sky_color_intensity;
 	float far_plane;
 	float normal_treshold;
+	float blur_normal_treshold;
+	float blur_plane_treshold;
 
 	int blur_kernel_size;
 	int blur_steps;
@@ -53,7 +55,7 @@ layout(push_constant, std430) uniform Params {
 } params;
 
 
-float divider = 0.001;
+float divider = 0.0001;
 ivec2 size;
 
 float get_linear_depth(ivec2 uv)
@@ -64,6 +66,12 @@ float get_linear_depth(ivec2 uv)
 	view.xyz /= view.w;
 
 	return -view.z;
+}
+
+vec3 uv_to_3d(ivec2 pixel_uv, float linear_depth, ivec2 raster_size)
+{
+	vec2 centred = vec2(pixel_uv) / vec2(raster_size) - 0.5;
+	return vec3(centred.x * linear_depth, centred.y * linear_depth, linear_depth);
 }
 
 vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
@@ -82,29 +90,18 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 
 vec4 testSample(ivec2 uv, ivec2 offset, vec3 normal_c, float depth_c)
 {
-	vec2 centredTexCoordC = vec2(uv)/vec2(size) - 0.5;
-	vec3 position_c = vec3(
-			centredTexCoordC.x * depth_c,
-			centredTexCoordC.y * depth_c,
-			depth_c
-		);
+	vec3 position_c = uv_to_3d(uv, depth_c, size);
 
 	float depth = get_linear_depth(uv + offset);
+	vec3 position_b = uv_to_3d(uv + offset, depth, size);
 
-	vec2 centredTexCoordB = vec2(uv + offset)/vec2(size) - 0.5;
-	vec3 position_b = vec3(
-			centredTexCoordB.x * depth,
-			centredTexCoordB.y * depth,
-			depth
-		);
-
-	vec3 direction = normalize(position_b - position_c);
+	vec3 direction = normalize(position_c - position_b);
 	
 	vec3 normal = normal_roughness_compatibility(imageLoad(normal_roughness_image, uv + offset)).xyz;
+	normal = normalize(normal);
 	
-	if(dot(normal, normal_c) < 0.9) return vec4(0);
-	if(dot(normal_c, direction) < -0.33) return vec4(0);
-	if(dot(normal_c, direction) > 0.33) return vec4(0);
+	if(dot(normal, normal_c) < settings.data.blur_normal_treshold) return vec4(0);
+	if(abs(dot(normal_c, direction)) > settings.data.blur_plane_treshold) return vec4(0);
 	
 	divider += 1.0;
 	
