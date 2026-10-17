@@ -37,6 +37,10 @@ const TEXTURE_OUT_IMAGE_BINDING := 1
 
 #Specialization constant bindings
 const BLUR_OFFSET_CONSTANT_BINDING: int = 0
+const MIX_ALBEDO_GI_CONSTANT: int = 0
+
+#Mix pass: set 1 bindings
+const ALBEDO_TEXTURE_BINDING := 1
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
@@ -44,6 +48,18 @@ const BLUR_OFFSET_CONSTANT_BINDING: int = 0
 	set(value):
 		settings = value
 		setup_settings()
+
+## Shared handoff resource filled by SSRTAlbedoSource (albedo_source_viewport.gd).
+## When set, the GI bounce is modulated by the scene's unlit albedo (from that
+## viewport's render target) instead of the already-lit scene color.
+## Typed as Resource because Godot 4.7 does not allow Node-typed exports on
+## Resource classes, and the handoff itself holds no Node references.
+@export var albedo_handoff : Resource :
+	set(value):
+		if albedo_handoff == value:
+			return
+		albedo_handoff = value
+		shaders_dirty = true
 
 var context : StringName = "SSRT_CE"
 
@@ -70,6 +86,11 @@ var blur_pipelines : Array
 var mix_shader : RID
 var mix_pipeline : RID
 
+#Albedo (unlit) source state, see albedo_handoff.gd
+var albedo_sampler : RID
+var albedo_placeholder : RID
+var albedo_rd_texture : RID
+
 var push_constant: PackedFloat32Array;
 
 var settings_dirty: bool = false
@@ -89,6 +110,8 @@ func _initialize_resource() -> void:
 #called once on resource creation (when effect is added to list, or when scene loaded) after resource is initialized
 func _initialize_render() -> void: 
 	print("from: SSRT_CE::_initialize_render()")
+	albedo_sampler = create_sampler(RenderingDevice.SamplerFilter.SAMPLER_FILTER_LINEAR)
+	_create_albedo_placeholder()
 	_recompile_shaders()
 		
 	
@@ -101,6 +124,8 @@ func _render_setup() -> void:
 		create_blur_pipelines()
 		create_mix_pipeline()
 		shaders_dirty = false
+	
+	_resolve_albedo_texture()
 	
 	if not render_scene_buffers.has_texture(context, texture_a):
 		create_textures()
@@ -148,7 +173,10 @@ func create_mix_pipeline() -> void:
 	if rd.compute_pipeline_is_valid(mix_pipeline):
 		rd.free_rid(mix_pipeline)
 	
-	mix_pipeline = create_pipeline(mix_shader)
+	var constants := {}
+	if albedo_handoff:
+		constants[MIX_ALBEDO_GI_CONSTANT] = true
+	mix_pipeline = create_pipeline(mix_shader, constants)
 	
 	
 func _render_view(p_view : int) -> void:
@@ -210,9 +238,19 @@ func _render_view(p_view : int) -> void:
 		
 	
 	#overlay pass
+	#The albedo descriptor is bound unconditionally (declared in the shader in both
+	#pipeline variants): use the black placeholder when there is no handoff or the
+	#albedo viewport has no render target yet (first frame). While albedo_size is 0
+	#the shader skips sampling and keeps the legacy lit-color modulation.
+	var mix_uniforms : Array[RDUniform] = [in_image_uniform]
+	var albedo_bind : RID = albedo_rd_texture
+	if not albedo_bind.is_valid():
+		albedo_bind = albedo_placeholder
+	mix_uniforms.append(get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING))
+	
 	uniform_sets = [
 		scene_uniform_set,
-		[in_image_uniform]
+		mix_uniforms
 	]
 	
 	run_compute_shader(
@@ -281,14 +319,60 @@ func create_textures() -> void:
 	var texture_b_image : RID = create_simple_texture(context, texture_b, TEXTURE_FORMAT)
 	texture_b_in_image_uniform = get_image_uniform(texture_b_image, TEXTURE_IN_IMAGE_BINDING)
 	texture_b_out_image_uniform = get_image_uniform(texture_b_image, TEXTURE_OUT_IMAGE_BINDING)
-		
+
+
+func _resolve_albedo_texture() -> void:
+	if not albedo_handoff:
+		albedo_rd_texture = RID()
+		return
+
+	var viewport_rid : RID = albedo_handoff.viewport_rid
+	if not viewport_rid.is_valid():
+		albedo_rd_texture = RID()
+		return
+
+	var rs_texture : RID = RenderingServer.viewport_get_texture(viewport_rid)
+	if not rs_texture.is_valid():
+		albedo_rd_texture = RID()
+		return
+
+	albedo_rd_texture = RenderingServer.texture_get_rd_texture(rs_texture, false)
+
+
+func _create_albedo_placeholder() -> void:
+	#1x1 black texture used as a valid binding while the albedo viewport has no
+	#render target yet (first frame). The shader skips sampling when albedo_size is 0.
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM
+	format.width = 1
+	format.height = 1
+	format.depth = 1
+	format.array_layers = 1
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_2D
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
+
+	var view := RDTextureView.new()
+
+	var black_pixel := PackedByteArray()
+	black_pixel.resize(4)
+
+	albedo_placeholder = rd.texture_create(format, view, [black_pixel])
+	add_rid_to_free(albedo_placeholder, "albedo placeholder texture")
+
 
 func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
 	push_constant= PackedFloat32Array()
 	push_constant.push_back(p_render_size.x)
 	push_constant.push_back(p_render_size.y)
-	push_constant.push_back(0.0)
-	push_constant.push_back(0.0)
+	if albedo_handoff and albedo_rd_texture.is_valid():
+		#albedo_size is maintained by SSRTAlbedoSource (main thread).
+		var albedo_size : Vector2i = albedo_handoff.albedo_size
+		push_constant.push_back(albedo_size.x)
+		push_constant.push_back(albedo_size.y)
+	else:
+		push_constant.push_back(0.0)
+		push_constant.push_back(0.0)
 	return push_constant
 
 

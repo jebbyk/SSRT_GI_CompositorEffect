@@ -6,6 +6,8 @@
 [ext_resource type="Script" uid="uid://b30a24s45nobl" path="res://Features/Testing/camera.gd" id="2_48kf0"]
 [ext_resource type="Texture2D" uid="uid://bj8ttgg0qulg1" path="res://Features/Graphics/Lighting/SSRT_sp/bluenoise.png" id="2_xhejr"]
 [ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_buypi"]
+[ext_resource type="Script" uid="uid://dufx3i0ilcvu6" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_handoff.gd" id="4_handoff"]
+[ext_resource type="Script" uid="uid://c580tb3qpuiwx" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_source_viewport.gd" id="5_albsrc"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4m2n"]
 cull_mode = 2
@@ -150,17 +152,19 @@ fog_light_color = Color(0.168627, 0.188235, 0.215686, 1)
 adjustment_enabled = true
 adjustment_brightness = 1.26
 
+[sub_resource type="Resource" id="SSRTAlbedoHandoff_1"]
+script = ExtResource("4_handoff")
+
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 8
+rays_amount = 1
 steps_per_ray = 64
 ray_length = 8.0
 depth_affect_ray_length = false
-bounce_intensity = 5.0
 occlusion_intensity = 5.0
+back_face_lighting = true
 blur_kernel_size = 3
 blur_steps = 2
-blur_normal_treshold = 0.5
 blur_plane_treshold = 0.3
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -175,16 +179,17 @@ needs_normal_roughness = true
 needs_separate_specular = true
 script = ExtResource("2_8pr8v")
 settings = SubResource("Resource_8pr8v")
+albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 metadata/_custom_type_script = "uid://ccb43csyh10lr"
 
 [sub_resource type="Compositor" id="Compositor_n8ajh"]
-compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buypi")])
+compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buypi"), null])
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_07lwh"]
 resource_local_to_scene = true
 render_priority = 127
 shader = ExtResource("1_f8t32")
-shader_parameter/raysAmount = 8.0
+shader_parameter/raysAmount = 64.0
 shader_parameter/stepsPerRay = 64.0
 shader_parameter/intencity = 3.00000014180148
 shader_parameter/aoIntencity = 4.00000018930148
@@ -196,7 +201,7 @@ shader_parameter/rayBias = 0.0
 shader_parameter/skyColor = Color(0.18899366, 0.3704716, 0.5038505, 1)
 shader_parameter/skyColorIntencity = 0.00999999977648
 shader_parameter/rayMissToSky = false
-shader_parameter/backFaceLighting = false
+shader_parameter/backFaceLighting = true
 shader_parameter/farPlane = 100.0000047025
 shader_parameter/blendMode = 0
 shader_parameter/perspective = 1.00000004424012
@@ -386,14 +391,14 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D11" type="CSGBox3D" parent="building" unique_id=1977674993]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -3.288137, -1.828439, -11.87117)
+transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -3.4415054, -1.828439, -11.87117)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D34" type="CSGBox3D" parent="building" unique_id=782321263]
-transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.1305904, -1.8284389, -11.828988)
+transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.3712354, -1.8284389, -11.828988)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -448,7 +453,7 @@ radial_segments = 24
 rings = 16
 
 [node name="big yellow sphere" type="CSGSphere3D" parent="building" unique_id=1546767737]
-transform = Transform3D(1.1580166, 0, 0, 0, 1.1580166, 0, 0, 0, 1.1580166, -3.758313, 1.1592008, -6.4927654)
+transform = Transform3D(1.4729632, 0, 0, 0, 1.4729632, 0, 0, 0, 1.4729632, -3.8609653, 1.1592008, -6.3679852)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -599,7 +604,6 @@ omni_range = 1.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8135105, -0.04787883, -0.57957655, 0.40380162, -0.6706865, 0.6221931, -0.41850388, -0.7401943, -0.5262767, 5.7162585, 1.8341535, -3.6544616)
-visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -635,10 +639,14 @@ skeleton = NodePath("../..")
 libraries/ = SubResource("AnimationLibrary_oct6a")
 autoplay = &"fly_through"
 
-[node name="SubViewport" type="SubViewport" parent="." unique_id=731899120]
+[node name="SubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("albedo_geometry", "camera_source")]
 debug_draw = 1
 use_hdr_2d = true
 render_target_update_mode = 4
+script = ExtResource("5_albsrc")
+albedo_geometry = NodePath("../building")
+camera_source = NodePath("../Camera3D")
+albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D" type="Camera3D" parent="SubViewport" unique_id=1930777123]
 transform = Transform3D(-0.98710275, 0.022279931, -0.1585301, 0, 0.9902681, 0.13917297, 0.16008806, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)

@@ -3,6 +3,8 @@
 
 #include "includes/scene_data.glsl"
 
+layout(constant_id = 0) const bool ALBEDO_GI = false;
+
 // Invocations in the (x, y, z) dimension
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
@@ -17,10 +19,12 @@ layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 
 // Set 1
 layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
+//Combined image+sampler (matches UNIFORM_TYPE_SAMPLER_WITH_TEXTURE in SSRT_CE.gd).
+layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
-	vec2 reserved;
+	vec2 albedo_size;
 } params;
 
 
@@ -49,5 +53,15 @@ void main() {
 
 	vec4 GI = imageLoad(in_image, uv);
 
-	imageStore(color_image, uv, vec4(mix(color + color * GI.rgb, vec3(0), GI.a), 1.0));
+	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
+	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit
+	//surfaces are not overbrightened. Falls back to the legacy lit-color
+	//modulation when ALBEDO_GI is off or the albedo size is not available.
+	vec3 albedo = color;
+	if(ALBEDO_GI && params.albedo_size.x > 0.0 && params.albedo_size.y > 0.0) {
+		vec2 albedo_uv = vec2(uv) / params.albedo_size;
+		albedo = texture(albedo_texture, albedo_uv).rgb;
+	}
+
+	imageStore(color_image, uv, vec4(mix(color + albedo * GI.rgb, vec3(0), GI.a), 1.0));
 }
