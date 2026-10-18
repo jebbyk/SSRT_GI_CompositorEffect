@@ -1,13 +1,28 @@
+@tool
 class_name SSRTAlbedoHandoff
 extends Resource
 
 ## Plain-data bridge between SSRTAlbedoSource (main thread) and SSRT_CE (render thread).
 ##
-## SSRTAlbedoSource fills these fields on _ready (viewport RID) and on resize (size).
-## SSRT_CE reads them every frame while setting up the mix pass.
+## SSRTAlbedoSource fills viewport_rid on _ready and albedo_size on resize.
+## SSRT_CE fills render_size every frame (the raster of the viewport it runs in —
+## the main one, because the albedo SubViewport uses its own world without a
+## compositor) and reads the rest while setting up the mix pass.
+## Cross-thread single-field writes/reads with a 1-frame lag: the mix pass
+## scales UVs by albedo_size, so a briefly stale size is harmless.
+##
+## @tool is required: in the editor non-tool scripts get a placeholder instance
+## without live variables (EditorNode disables scripting for non-tool scripts),
+## which would make every viewport_rid/albedo_size access a script error and
+## silently disable the albedo path in the 3D preview (SSRT_CE would fall back
+## to the legacy lit-color modulation).
 ##
 ## Kept as a shared Resource (instead of a Node reference) because Godot 4.7
 ## does not allow Node-typed @export properties on Resource classes.
 
 var viewport_rid: RID
 var albedo_size := Vector2i.ZERO
+## Raster size of the viewport the CE runs in. Written by SSRT_CE every frame
+## (render thread); read by SSRTAlbedoSource to size its render target to the
+## exact raster the mix pass samples.
+var render_size := Vector2i.ZERO

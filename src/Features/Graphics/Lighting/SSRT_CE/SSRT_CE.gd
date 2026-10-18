@@ -117,8 +117,17 @@ func _initialize_render() -> void:
 	
 #called every frame before executing code for each view
 func _render_setup() -> void:
+	#Publish this viewport's raster to the handoff so SSRTAlbedoSource can size
+	#its render target to the exact raster the mix pass samples (in the editor
+	#the host SubViewport's `size` property does not reflect the 3D panel's
+	#render size). Written render-thread / read main-thread, see albedo_handoff.gd.
+	#Only the main viewport runs this effect (the albedo SubViewport uses its own
+	#world without a compositor), so the value is stable.
+	if albedo_handoff:
+		albedo_handoff.render_size = render_size
+	
 	if not settings_ubo.is_valid() or settings_dirty or shaders_dirty:
-		print("from: SSRT_CE::_render_setup(). msg: Settings are dirty")
+		#print("from: SSRT_CE::_render_setup(). msg: Settings are dirty")
 		create_settings_uniform_buffer()
 		create_trace_pipeline()
 		create_blur_pipelines()
@@ -144,7 +153,7 @@ func create_trace_pipeline() -> void:
 	
 	
 func create_blur_pipelines() -> void:
-	print("from: SSRT_CE::create_blur_pipelines()")
+	#print("from: SSRT_CE::create_blur_pipelines()")
 	for i in blur_pipelines.size():
 		if rd.compute_pipeline_is_valid(blur_pipelines[i]):
 			rd.free_rid(blur_pipelines[i])
@@ -158,7 +167,7 @@ func create_blur_pipelines() -> void:
 	
 	
 func create_blur_pipeline(offset : int) -> void:
-	print("from: SSRT_CE::create_blur_pipeline() offset: %s" % offset)
+	#print("from: SSRT_CE::create_blur_pipeline() offset: %s" % offset)
 	if not blur_shader.is_valid():
 		push_error("from: SSRT_CE::create_blur_pipeline(). msg: Blur shader is not valid")
 		
@@ -180,7 +189,7 @@ func create_mix_pipeline() -> void:
 	
 	
 func _render_view(p_view : int) -> void:
-	print("from: SSRT_CE::_render_view()")
+	#print("from: SSRT_CE::_render_view()")
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
 	
@@ -263,7 +272,7 @@ func _render_view(p_view : int) -> void:
 
 
 func _render_size_changed() -> void:
-	print("from: SSRT_CE::_render_size_changed()")
+	#print("from: SSRT_CE::_render_size_changed()")
 	render_scene_buffers.clear_context(context)
 	make_settings_dirty()
 	

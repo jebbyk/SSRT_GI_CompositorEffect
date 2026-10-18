@@ -41,7 +41,14 @@ func _init():
 	#Camera mirroring: pause the animation, move the source, verify the mirror.
 	var cam_src: Node = sub.get("camera_source") if sub else null
 	check("camera_source resolved to a Camera3D", cam_src is Camera3D)
-	var cam_dst: Node = sub.get_node_or_null("Camera3D") if sub else null
+	# Look the mirror camera up by type, not by name: the user renamed the
+	# camera nodes in the scene (Camera3D-free-look / Camera3D-albedo-source).
+	var cam_dst: Node = null
+	if sub:
+		for c in sub.get_children():
+			if c is Camera3D:
+				cam_dst = c
+				break
 	check("stub camera inside SubViewport exists", cam_dst is Camera3D)
 	if cam_src and cam_dst:
 		var ap: Node = cam_src.get_node_or_null("AnimationPlayer")
@@ -58,7 +65,7 @@ func _init():
 	var dup: Node = null
 	if sub:
 		for c in sub.get_children():
-			if c is Node3D and c != cam_dst:
+			if c is Node3D and not (c is Camera3D) and not (c is WorldEnvironment):
 				dup = c
 				break
 	check("duplicate geometry child exists in SubViewport", dup != null)
@@ -107,7 +114,12 @@ func _init():
 		check("texture_get_rd_texture resolves to a valid RD texture (GPU chain)", rd_tex.is_valid())
 
 	# --- AC4 (strict): camera_source is the sibling Camera3D; mirror is per-frame ---
-	check("camera_source is the sibling main Camera3D", cam_src == sub.get_parent().get_node_or_null("Camera3D"))
+	var sibling_cam: Node = null
+	for c in sub.get_parent().get_children():
+		if c is Camera3D:
+			sibling_cam = c
+			break
+	check("camera_source is the sibling main Camera3D", cam_src == sibling_cam)
 	if cam_src and cam_dst:
 		var t2 := Transform3D(Basis(Vector3.UP, deg_to_rad(45.0)) * Basis(Vector3.RIGHT, deg_to_rad(30.0)), Vector3(-7.0, 12.0, 42.0))
 		cam_src.global_transform = t2

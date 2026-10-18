@@ -157,14 +157,12 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 1
+rays_amount = 16
 steps_per_ray = 64
 ray_length = 8.0
 depth_affect_ray_length = false
-occlusion_intensity = 5.0
-back_face_lighting = true
+occlusion_intensity = 3.0
 blur_kernel_size = 3
-blur_steps = 2
 blur_plane_treshold = 0.3
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -419,7 +417,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D25" type="CSGBox3D" parent="building" unique_id=663577053]
-transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -3.8908448, -1.1136684, -18.54747)
+transform = Transform3D(-4.615224e-07, 0.98693913, 0, -10.5583935, -4.31405e-08, 0, 0, 0, 0.7187654, -3.8908448, -1.1136684, -18.513435)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -619,11 +617,12 @@ directional_shadow_pancake_size = 0.0
 environment = SubResource("Environment_xekms")
 compositor = SubResource("Compositor_n8ajh")
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=790363406]
+[node name="Camera3D-free-look" type="Camera3D" parent="." unique_id=790363406]
 transform = Transform3D(-0.98710275, 0.022279916, -0.15853001, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
+visible = false
 script = ExtResource("2_48kf0")
 
-[node name="ssrt_sp" type="MeshInstance3D" parent="Camera3D" unique_id=314010324]
+[node name="ssrt_sp" type="MeshInstance3D" parent="Camera3D-free-look" unique_id=314010324]
 transform = Transform3D(-1.9740992, 0.001253994, 0.3208341, 0.04593497, 1.9804952, 0.2749007, -0.3175296, 0.2787094, -1.9548749, 3.3990006, -1.9869454, -0.7234044)
 visible = false
 material_override = SubResource("ShaderMaterial_07lwh")
@@ -635,18 +634,22 @@ gi_lightmap_texel_scale = 0.01
 mesh = SubResource("QuadMesh_w72ga")
 skeleton = NodePath("../..")
 
-[node name="AnimationPlayer" type="AnimationPlayer" parent="Camera3D" unique_id=1947873569]
+[node name="AnimationPlayer" type="AnimationPlayer" parent="Camera3D-free-look" unique_id=1947873569]
 libraries/ = SubResource("AnimationLibrary_oct6a")
 autoplay = &"fly_through"
 
 [node name="SubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("albedo_geometry", "camera_source")]
+own_world_3d = true
 debug_draw = 1
 use_hdr_2d = true
+scaling_3d_mode = 0
+fsr_sharpness = 0.0
+size = Vector2i(1115, 491)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 albedo_geometry = NodePath("../building")
-camera_source = NodePath("../Camera3D")
+camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
-[node name="Camera3D" type="Camera3D" parent="SubViewport" unique_id=1930777123]
-transform = Transform3D(-0.98710275, 0.022279931, -0.1585301, 0, 0.9902681, 0.13917297, 0.16008806, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
+[node name="Camera3D-albedo-source" type="Camera3D" parent="SubViewport" unique_id=1930777123]
+transform = Transform3D(-0.98710275, 0.022279918, -0.15853, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
