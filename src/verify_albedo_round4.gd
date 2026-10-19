@@ -1,12 +1,12 @@
 extends SceneTree
-# Round 4 verification (Option A fix):
+# Round 4 verification (sizing) + Option B (live-world albedo):
 #   B1 - CE-driven sizing branch of SSRTAlbedoSource._target_size()
 #        (handoff.render_size published by the CE has priority over the
 #         root.size fallback)
 #   B2 - CE render_size == ZERO => root.size fallback branch still works
-#   B3 - albedo SubViewport own-world isolation (own World3D, RID distinct
-#        from the principal world, so the principal-world compositor cannot
-#        reach it)
+#   B3 - albedo SubViewport SHARES the principal world (Option B: no isolated
+#        own World3D, RID EQUAL to the principal world). This is the "no ghost"
+#        fix — the old isolated-world isolation is intentionally gone.
 # In headless RenderingServer.get_rendering_device() == null, so the CE render
 # callback never runs and nobody writes handoff.render_size — B1 emulates the
 # CE publish by writing handoff.render_size directly (same cross-thread write
@@ -76,14 +76,15 @@ func _init():
 	check("B2: handoff.albedo_size follows the fallback size", handoff.albedo_size == root.size)
 
 	# ------------------------------------------------------------------
-	# B3: own-world isolation
+	# B3: Option B — the albedo SubViewport SHARES the principal world
+	# (the "no ghost" fix; the old isolated-world design is intentionally gone)
 	# ------------------------------------------------------------------
-	check("B3: SubViewport uses its own World3D", sub.is_using_own_world_3d() == true)
+	check("B3: SubViewport does NOT use its own World3D (variant B: shares main world)", sub.is_using_own_world_3d() == false)
 	var sub_world: RID = sub.find_world_3d()
 	check("B3: sub.find_world_3d() is valid", sub_world.is_valid())
 	var root_world: RID = root.find_world_3d()
 	check("B3: root.find_world_3d() is valid", root_world.is_valid())
-	check("B3: albedo world RID != principal world RID (compositor of the principal world cannot reach the albedo SubViewport)", sub_world != root_world)
+	check("B3: albedo world RID == principal world RID (variant B: live shared world = no ghost)", sub_world == root_world)
 
 	_finish()
 

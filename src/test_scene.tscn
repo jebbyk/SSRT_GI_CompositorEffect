@@ -137,7 +137,6 @@ ssr_max_steps = 512
 ssr_fade_in = 4.3550164e-05
 ssr_fade_out = 1.006707e-05
 ssr_depth_tolerance = 2.11
-ssao_radius = 0.19
 ssil_radius = 6.81
 ssil_intensity = 8.88
 ssil_sharpness = 1.0
@@ -161,6 +160,7 @@ rays_amount = 16
 steps_per_ray = 64
 ray_length = 8.0
 depth_affect_ray_length = false
+bounce_intensity = 0.5
 occlusion_intensity = 3.0
 blur_kernel_size = 3
 blur_plane_treshold = 0.3
@@ -293,7 +293,7 @@ mesh = SubResource("QuadMesh_u8xit")
 skeleton = NodePath("../..")
 
 [node name="blue box" type="MeshInstance3D" parent="building" unique_id=1902615745]
-transform = Transform3D(-0.656018, 0, 5.73509e-08, 0, 0.656018, 0, -5.73509e-08, 0, -0.656018, -18.224682, 1.01428, 2.0451207)
+transform = Transform3D(-0.656018, 0, 5.73509e-08, 0, 0.656018, 0, -5.73509e-08, 0, -0.656018, -18.750536, 1.01428, 2.5353844)
 material_override = SubResource("StandardMaterial3D_5dwf6")
 mesh = SubResource("BoxMesh_fihiy")
 skeleton = NodePath("../..")
@@ -389,14 +389,14 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D11" type="CSGBox3D" parent="building" unique_id=1977674993]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -3.4415054, -1.828439, -11.87117)
+transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -2.530014, -1.828439, -11.87117)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D34" type="CSGBox3D" parent="building" unique_id=782321263]
-transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.3712354, -1.8284389, -11.828988)
+transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.7198677, -1.8284389, -11.828988)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -451,7 +451,7 @@ radial_segments = 24
 rings = 16
 
 [node name="big yellow sphere" type="CSGSphere3D" parent="building" unique_id=1546767737]
-transform = Transform3D(1.4729632, 0, 0, 0, 1.4729632, 0, 0, 0, 1.4729632, -3.8609653, 1.1592008, -6.3679852)
+transform = Transform3D(1.4729632, 0, 0, 0, 1.4729632, 0, 0, 0, 1.4729632, -3.5615885, 1.1592008, -6.3679852)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -638,18 +638,17 @@ skeleton = NodePath("../..")
 libraries/ = SubResource("AnimationLibrary_oct6a")
 autoplay = &"fly_through"
 
-[node name="SubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("albedo_geometry", "camera_source")]
-own_world_3d = true
+[node name="SubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("camera_source")]
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1115, 491)
+size = Vector2i(1205, 902)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
-albedo_geometry = NodePath("../building")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="SubViewport" unique_id=1930777123]
-transform = Transform3D(-0.98710275, 0.022279918, -0.15853, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
+transform = Transform3D(-0.9999965, -1.6378166e-05, -0.002663583, 0, 0.9999811, -0.006148807, 0.0026636333, -0.006148785, -0.9999776, 7.7913675, 3.3294284, -3.9989443)
+fov = 70.01

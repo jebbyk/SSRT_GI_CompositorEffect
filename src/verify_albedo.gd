@@ -61,20 +61,17 @@ func _init():
 		await process_frame
 		check("camera transform mirrored into SubViewport", cam_dst.global_transform == cam_src.global_transform)
 
-	#Duplicate instance exists and shares materials with the original.
+	#Variant B: the SubViewport renders the LIVE main world, so it must NOT hold
+	#a duplicated geometry child (the old isolated-world design created a static
+	#duplicate — that was the "ghost" bug). Only the mirror camera is allowed as
+	#a 3D child of the SubViewport.
 	var dup: Node = null
 	if sub:
 		for c in sub.get_children():
 			if c is Node3D and not (c is Camera3D) and not (c is WorldEnvironment):
 				dup = c
 				break
-	check("duplicate geometry child exists in SubViewport", dup != null)
-	var orig_mi: MeshInstance3D = scene.get_node_or_null("building/MeshInstance3D2")
-	var dup_mi: Node = dup.get_node_or_null("MeshInstance3D2") if dup else null
-	if orig_mi and dup_mi:
-		var m1: Material = orig_mi.material_override
-		var m2: Material = dup_mi.material_override
-		check("duplicate shares material instance with original", m1 != null and m1 == m2)
+	check("no duplicate geometry child (variant B renders the live world)", dup == null)
 
 	#The CE must hold the very same handoff instance.
 	var ce_handoff: Resource = null
@@ -127,34 +124,17 @@ func _init():
 		await process_frame
 		check("camera transform re-mirrored after 2nd move with rotation (per-frame mirror)", cam_dst.global_transform == cam_src.global_transform)
 
-	# --- AC5 (strict): duplicate covers the CURRENT scene incl. user's recent nodes ---
-	if dup:
-		check("duplicate root is named like the source ('building')", dup.name == "building")
-		check("duplicate has 'MeshInstance3D2'", dup.get_node_or_null("MeshInstance3D2") != null)
-		check("duplicate has 'CSGBox3D11' (user node)", dup.get_node_or_null("CSGBox3D11") != null)
-		check("duplicate has 'CSGBox3D34' (user node)", dup.get_node_or_null("CSGBox3D34") != null)
-		check("duplicate has 'big yellow sphere' (user node)", dup.get_node_or_null("big yellow sphere") != null)
-		var building: Node = scene.get_node_or_null("building")
-		if building:
-			check("duplicate child count == original building child count", dup.get_children().size() == building.get_children().size())
-		check("duplicate contains no Camera3D", dup.find_children("", "Camera3D").is_empty())
-		var orig_mi2: MeshInstance3D = scene.get_node_or_null("building/MeshInstance3D2")
-		var dup_mi2: MeshInstance3D = dup.get_node_or_null("MeshInstance3D2")
-		if orig_mi2 and dup_mi2:
-			check("duplicate shares mesh instance with original (shared resources)", dup_mi2.mesh == orig_mi2.mesh)
-
-	# --- Linear environment inside the SubViewport (design requirement) ---
+	# --- Variant B: NO isolated linear WorldEnvironment inside the SubViewport ---
+	# The old design added a linear-tonemap WorldEnvironment child so the isolated
+	# world produced a raw albedo. Option B removed it (the main world's
+	# environment now applies — documented "Accepted consequence"), so there must
+	# be NO WorldEnvironment child of the albedo SubViewport.
 	var we_sub: WorldEnvironment = null
 	for c in sub.get_children():
 		if c is WorldEnvironment:
 			we_sub = c
 			break
-	check("SubViewport has a WorldEnvironment child", we_sub != null)
-	if we_sub:
-		var env: Environment = we_sub.environment
-		check("SubViewport env: BG_CLEAR_COLOR", env.background_mode == Environment.BG_CLEAR_COLOR)
-		check("SubViewport env: background color black", env.background_color == Color.BLACK)
-		check("SubViewport env: TONE_MAPPER_LINEAR", env.tonemap_mode == Environment.TONE_MAPPER_LINEAR)
+	check("no isolated WorldEnvironment child (variant B: main world env applies)", we_sub == null)
 
 	# --- Edge: SubViewport + handoff follow a window resize (resize path of _process) ---
 	var old_size: Vector2i = sub.size
@@ -186,18 +166,18 @@ func _init():
 	check("SubViewport still UNSHADED/ALWAYS/HDR after detach", sub.debug_draw == Viewport.DEBUG_DRAW_UNSHADED
 		and sub.render_target_update_mode == SubViewport.UPDATE_ALWAYS and sub.use_hdr_2d == true)
 
-	# --- Edge: SSRTAlbedoSource without geometry must not crash and must not duplicate ---
+	# --- Edge: a fresh SSRTAlbedoSource (no scene attached) must not crash and must not add stray 3D children ---
 	var sub_script: GDScript = load("res://Features/Graphics/Lighting/SSRT_CE/albedo_source_viewport.gd")
 	var sub2: SubViewport = sub_script.new()
 	root.add_child(sub2)
 	await process_frame
 	await process_frame
-	check("SSRTAlbedoSource with albedo_geometry unset runs without crash", true)
+	check("fresh SSRTAlbedoSource (no scene) runs without crash", true)
 	var stray_geo := false
 	for c in sub2.get_children():
 		if c is Node3D and c is not Camera3D:
 			stray_geo = true
-	check("no-geometry SSRTAlbedoSource has no duplicate child", not stray_geo)
+	check("fresh SSRTAlbedoSource adds no stray 3D child (only its mirror camera)", not stray_geo)
 	sub2.queue_free()
 	await process_frame
 

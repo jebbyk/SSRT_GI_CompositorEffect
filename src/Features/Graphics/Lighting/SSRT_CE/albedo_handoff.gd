@@ -6,8 +6,8 @@ extends Resource
 ##
 ## SSRTAlbedoSource fills viewport_rid on _ready and albedo_size on resize.
 ## SSRT_CE fills render_size every frame (the raster of the viewport it runs in —
-## the main one, because the albedo SubViewport uses its own world without a
-## compositor) and reads the rest while setting up the mix pass.
+## the main one, because the albedo SubViewport has no compositor of its own) and
+## reads the rest while setting up the mix pass.
 ## Cross-thread single-field writes/reads with a 1-frame lag: the mix pass
 ## scales UVs by albedo_size, so a briefly stale size is harmless.
 ##
