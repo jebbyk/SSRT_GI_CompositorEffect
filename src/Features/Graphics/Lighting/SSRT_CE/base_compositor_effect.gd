@@ -393,11 +393,13 @@ func _report_skipped_pass(p_label : String, p_set : int) -> void:
 		return
 	_skipped_pass_reported = true
 	push_warning(
-		"from: BaseCompositorEffect::run_compute_shader(). "
-		+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created because one of its "
-		+ "images lacks TEXTURE_USAGE_STORAGE_BIT (typically the depth layer of a viewport without MSAA, "
-		+ "e.g. the albedo source SubViewport). The effect stays disabled on that viewport; this warning "
-		+ "is printed once." % [p_label, p_set]
+		(
+			"from: BaseCompositorEffect::run_compute_shader(). "
+			+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created because one of its "
+			+ "images lacks TEXTURE_USAGE_STORAGE_BIT (typically the depth layer of a viewport without MSAA, "
+			+ "e.g. the albedo source SubViewport). The effect stays disabled on that viewport; this warning "
+			+ "is printed once."
+		) % [p_label, p_set]
 	)
 
 ## Get Godot's built-in SceneData UBO.
