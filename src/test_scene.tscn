@@ -162,7 +162,7 @@ ray_length = 8.0
 depth_affect_ray_length = false
 bounce_intensity = 0.5
 occlusion_intensity = 3.0
-blur_kernel_size = 3
+blur_steps = 2
 blur_plane_treshold = 0.3
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
@@ -602,6 +602,7 @@ omni_range = 1.0
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8135105, -0.04787883, -0.57957655, 0.40380162, -0.6706865, 0.6221931, -0.41850388, -0.7401943, -0.5262767, 5.7162585, 1.8341535, -3.6544616)
+visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -643,12 +644,12 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1018, 806)
+size = Vector2i(1018, 709)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="SubViewport" unique_id=1930777123]
-transform = Transform3D(-0.393155, -0.15013948, 0.9071314, 0, 0.98657835, 0.16328877, -0.9194722, 0.06419779, -0.3878782, 0.49820662, 2.6210785, -7.7795)
+transform = Transform3D(-0.87546265, 0.3366143, -0.34677944, 0, 0.7175453, 0.69651186, 0.4832858, 0.6097701, -0.6281841, -10.722638, 2.175109, -2.3989851)
 fov = 70.01

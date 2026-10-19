@@ -98,7 +98,7 @@ var shaders_dirty: bool = false
 
 #called once on resource creation (when effect is added to list, or when scene loaded)
 func _initialize_resource() -> void:
-	print("from: SSRT_CE::_initialize_resource()")
+	#print("from: SSRT_CE::_initialize_resource()")
 	if not settings:
 		settings = SSRTSettings.new()
 		setup_settings()
@@ -109,7 +109,7 @@ func _initialize_resource() -> void:
 		
 #called once on resource creation (when effect is added to list, or when scene loaded) after resource is initialized
 func _initialize_render() -> void: 
-	print("from: SSRT_CE::_initialize_render()")
+	#print("from: SSRT_CE::_initialize_render()")
 	albedo_sampler = create_sampler(RenderingDevice.SamplerFilter.SAMPLER_FILTER_LINEAR)
 	_create_albedo_placeholder()
 	_recompile_shaders()
@@ -121,8 +121,10 @@ func _render_setup() -> void:
 	#its render target to the exact raster the mix pass samples (in the editor
 	#the host SubViewport's `size` property does not reflect the 3D panel's
 	#render size). Written render-thread / read main-thread, see albedo_handoff.gd.
-	#Only the main viewport runs this effect (the albedo SubViewport uses its own
-	#world without a compositor), so the value is stable.
+	#The albedo SubViewport shares this world (variant B), so the compositor
+	#invokes this effect there too; its passes are then auto-skipped by
+	#run_compute_shader() (its depth layer lacks TEXTURE_USAGE_STORAGE_BIT).
+	#Both viewports render at the same raster, so the value is stable.
 	if albedo_handoff:
 		albedo_handoff.render_size = render_size
 	
@@ -278,7 +280,7 @@ func _render_size_changed() -> void:
 	
 	
 func _settings_changed() -> void:
-	print("from: SSRT_CE::_settings_changed()")
+	#print("from: SSRT_CE::_settings_changed()")
 	render_scene_buffers.clear_context(context)
 	make_settings_dirty()
 
@@ -386,18 +388,18 @@ func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
 
 
 func setup_settings() -> void:
-	print("from: SSRT_CE::setup_settings()")
+	#print("from: SSRT_CE::setup_settings()")
 	if not settings.s_changed.is_connected(_settings_changed):
 		settings.s_changed.connect(_settings_changed)
 		
 		
 func make_settings_dirty() -> void:
-	print("from: SSRT_CE::make_settings_dirty()")
+	#print("from: SSRT_CE::make_settings_dirty()")
 	settings_dirty = true
 	
 	
 func _recompile_shaders() -> void:
-	print("from: SSRT_CE::_recompile_shaders()")
+	#print("from: SSRT_CE::_recompile_shaders()")
 	trace_shader = create_shader(TRACE_SHADER_PATH)
 	blur_shader = create_shader(BLUR_SHADER_PATH)
 	mix_shader = create_shader(MIX_SHADER_PATH)

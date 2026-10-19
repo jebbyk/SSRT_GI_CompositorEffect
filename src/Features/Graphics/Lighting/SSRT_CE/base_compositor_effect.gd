@@ -288,6 +288,59 @@ func get_sampler_uniform(
 	return uniform
 
 
+## Uniform sets that failed to create on a previous dispatch.
+## `UniformSetCacheRD` does not remember failed creations: every cache miss
+## retries `uniform_set_create()`, which re-emits the engine ERROR (e.g.
+## "Image (binding: 2, index 0) needs the TEXTURE_USAGE_STORAGE_BIT") on every
+## frame. The CE memoizes failures here so each unique (viewport, set) pair is
+## retried at most once per process. The key is the owning RenderSceneBuffers
+## object (stable per viewport, and stable across window resizes) plus the set
+## shape, so a set that is valid on one viewport is never skipped because of a
+## failure recorded for another viewport's buffers.
+var _failed_uniform_set_keys := {}
+
+## The skip diagnostic is printed once per effect instance, not per pass/frame.
+var _skipped_pass_reported := false
+
+## Fingerprint of a uniform set for failure-memoization.
+##
+## The key is the owning RenderSceneBuffers object (its instance ID) plus the
+## set's shape (per-uniform type and binding). The RenderSceneBuffers object is
+## created once per viewport and reused across window resizes (the scene's
+## color/depth/normal textures inside it are freed and recreated with new RIDs
+## on every resize, but the object itself survives), so its instance ID is a
+## stable per-viewport discriminator: the albedo source SubViewport and the main
+## viewport map to different keys, while the same viewport maps to the same key
+## every frame AND across resizes.
+##
+## Deliberately excludes the RIDs of the bound resources (they churn on resize,
+## which would make the key change and re-trigger the failing creation), the
+## RDUniform objects themselves (rebuilt every frame), and the shader RID (all
+## passes share the same set shape, so it adds no discrimination).
+func _uniform_set_key(p_set : int, p_uniforms : Array) -> String:
+	var shape := ""
+	for u in p_uniforms:
+		var type := -1
+		var binding := -1
+		if u is RDUniform:
+			type = u.uniform_type
+			binding = u.binding
+		shape += "%d:%d;" % [type, binding]
+
+	if render_scene_buffers:
+		return "%s|%d|%s" % [render_scene_buffers.get_instance_id(), p_set, shape]
+
+	# Defensive fallback (should not happen in practice): no stable viewport
+	# discriminator is available, so fall back to the bound RIDs. This key
+	# changes on resize, but without it the failing pass could not be skipped.
+	var ids := ""
+	for u in p_uniforms:
+		if u is RDUniform:
+			for id in u.get_ids():
+				ids += str(id.get_id()) + "/"
+	return "null_vp|%d|%s|%s" % [p_set, shape, ids]
+
+
 ## `p_push_constant` takes a PackedFloat32Array and resizes
 ## it to meet layout requirements. Push constants use std430, so the items
 ## don't require padding for alignment. But it appears the total size must be
@@ -299,44 +352,53 @@ func run_compute_shader(
 			p_uniform_sets : Array[Array],
 			p_push_constant := PackedFloat32Array(),
 		) -> void:
+	# Resolve and validate the uniform sets before recording any commands.
+	# A set is invalid when it cannot be created — most commonly because one
+	# of its images lacks TEXTURE_USAGE_STORAGE_BIT: the scene's depth layer
+	# is an R32 storage image only when MSAA is on, so a viewport without
+	# MSAA (typically the albedo source SubViewport, which shares this world
+	# and therefore also runs this effect) gets a D32 depth layer and no
+	# valid set. Dispatching there with an unbound set would spam "Uniforms
+	# were never supplied for set (N)" every frame, so the pass is skipped.
+	var set_rids : Array[RID] = []
+	for idx in p_uniform_sets.size():
+		var uniforms : Array = p_uniform_sets[idx]
+		var key := _uniform_set_key(idx, uniforms)
+		if _failed_uniform_set_keys.has(key):
+			return
+		var set_rid : RID = UniformSetCacheRD.get_cache(p_shader, idx, uniforms)
+		if not set_rid.is_valid():
+			_failed_uniform_set_keys[key] = true
+			_report_skipped_pass(p_label, idx)
+			return
+		set_rids.append(set_rid)
+
 	rd.draw_command_begin_label(p_label, Color.AQUAMARINE)
 
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, p_pipeline)
 
-	for idx in p_uniform_sets.size():
-		var uniforms : Array = p_uniform_sets[idx]
-		rd.compute_list_bind_uniform_set(
-				compute_list,
-				UniformSetCacheRD.get_cache(
-						p_shader,
-						idx,
-						uniforms,
-					),
-				idx,
-			)
+	for idx in set_rids.size():
+		rd.compute_list_bind_uniform_set(compute_list, set_rids[idx], idx)
 
 	if not p_push_constant.is_empty():
 		rd.compute_list_set_push_constant(compute_list, p_push_constant.to_byte_array(), p_push_constant.size() * 4)
-		#var byte_array := p_push_constant.to_byte_array()
-		#var size_before := byte_array.size()
-		#if byte_array.size() % 16:
-			#byte_array.resize(ceili(float(byte_array.size())/16.0) * 16)
-			#if print_buffer_resize:
-				#var size_change := byte_array.size() - size_before
-				#print("Pipeline: %s" % p_pipeline.get_id())
-				#print("\tPush constant resized from %s to %s." % [size_before, byte_array.size()])
-				#print("\tBytes added: %s = %s floats." % [size_change, float(size_change)/4.0])
-#
-		#rd.compute_list_set_push_constant(
-				#compute_list,
-				#byte_array,
-				#byte_array.size(),
-			#)
-
 	rd.compute_list_dispatch(compute_list, _workgroups.x, _workgroups.y, _workgroups.z)
 	rd.compute_list_end()
 	rd.draw_command_end_label()
+
+
+func _report_skipped_pass(p_label : String, p_set : int) -> void:
+	if _skipped_pass_reported:
+		return
+	_skipped_pass_reported = true
+	push_warning(
+		"from: BaseCompositorEffect::run_compute_shader(). "
+		+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created because one of its "
+		+ "images lacks TEXTURE_USAGE_STORAGE_BIT (typically the depth layer of a viewport without MSAA, "
+		+ "e.g. the albedo source SubViewport). The effect stays disabled on that viewport; this warning "
+		+ "is printed once." % [p_label, p_set]
+	)
 
 ## Get Godot's built-in SceneData UBO.
 ## See https://github.com/godotengine/godot/pull/80214#issuecomment-1953258434
