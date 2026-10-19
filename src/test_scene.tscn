@@ -643,12 +643,12 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1205, 902)
+size = Vector2i(1018, 806)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="SubViewport" unique_id=1930777123]
-transform = Transform3D(-0.9999965, -1.6378166e-05, -0.002663583, 0, 0.9999811, -0.006148807, 0.0026636333, -0.006148785, -0.9999776, 7.7913675, 3.3294284, -3.9989443)
+transform = Transform3D(-0.393155, -0.15013948, 0.9071314, 0, 0.98657835, 0.16328877, -0.9194722, 0.06419779, -0.3878782, 0.49820662, 2.6210785, -7.7795)
 fov = 70.01

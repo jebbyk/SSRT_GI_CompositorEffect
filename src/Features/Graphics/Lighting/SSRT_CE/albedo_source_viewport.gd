@@ -104,24 +104,30 @@ func _process(_delta: float) -> void:
 
 	if not _camera_target:
 		return
+	var src: Camera3D = null
 	if Engine.is_editor_hint():
-		_mirror_editor_camera()
+		# In the editor the 3D preview is rendered from the editor's own
+		# viewport camera, which the editor updates every frame. The albedo map
+		# is screen-space, so it must be rendered from that same camera.
+		src = _editor_3d_camera()
 	elif camera_source:
 		# Mirror the source camera. In tree order this runs after the source
 		# camera's own _process and its AnimationPlayer, so it picks up the
 		# final transform.
-		_camera_target.global_transform = camera_source.global_transform
+		src = camera_source
+	if src:
+		# The editor branch may not have a camera yet (3D screen not open) and
+		# camera_source may be unset: in either case keep the previous mirror.
+		_apply_mirror_camera(src)
 
 
-func _mirror_editor_camera() -> void:
-	# In the editor the 3D preview is rendered from the editor's own viewport
-	# camera, which the editor updates every frame. The albedo map is
-	# screen-space, so it must be rendered from that same camera.
-	var cam := _editor_3d_camera()
-	if not cam:
-		# 3D editor screen not open/created yet, or viewport not ready:
-		# keep the previous transform.
-		return
+func _apply_mirror_camera(cam: Camera3D) -> void:
+	# Copy the FULL camera state (pose + projection), not just the transform.
+	# The mirror is a separate Camera3D node with its own default values;
+	# copying only global_transform (the old in-game branch) leaves its own
+	# fov / projection / near / far in place, so the albedo map and the main
+	# raster disagree on scale and look misaligned (the in-game "FOV mismatch"
+	# bug). Both the editor and the in-game paths now share this copy.
 	_camera_target.global_transform = cam.global_transform
 	_camera_target.fov = cam.fov
 	_camera_target.projection = cam.projection
