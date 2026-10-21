@@ -3,22 +3,18 @@ class_name SSRT_CE
 extends BaseCompositorEffect
 
 #TODO improve bad sample canceling (on alligning surfaces)
-#TODO use separate z_thickness for AO and bounce?
-#TODO retrieving shader compilation errors (if not yet?)
+#TODO use separate z_thickness for AO and bounce (?)
 #TODO reduce self-litting\occluding
 #TODO use includes at full potential
-#TODO cancel blur pixel if depth is to far from original
-#TODO advanced denoise (ray cone spot i.e. far samples are wider)
-#TODO GI (bounce and AO) boost on steep angles (togleable)
+#TODO advanced denoise (ray cone spot i.e. far samples are wider) (?)
 #TODO more advanced denoise with samples accumulation from several frames
 #TODO even more advanced denosie with motion vectors taken into account
 #TODO optimize with BVH (ye it is possible to build one on a GPU)
-#TODO read GI probes from lit albedo, multiply GI to unlit albedo and only then mix it (now it is only possible with help of viewport rendering to a texture)
 #TODO rays miss to sky color and ground color
 #TODO ray miss to scene skybox
 #TODO retrieve metalicity buffer and use it to proper reflections
 #TODO make it compatible with upscaling (screen quad version remains sharp even with fsr2.1 x0.5)
-#TODO use multiple cameras setup to capture offscreen things
+#TODO use multiple cameras setup to capture offscreen things (?)
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
 const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"

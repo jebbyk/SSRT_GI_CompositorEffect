@@ -1,0 +1,19 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://digg7gphnpr5j"]
+
+[ext_resource type="Texture2D" uid="uid://b1310uo2tooac" path="res://Textures/tropical leaf/tropical-leaf-unity/tropical-leaf_albedo_cutout.png" id="1_x7ocu"]
+[ext_resource type="Texture2D" uid="uid://d0lqyal0wnts2" path="res://Textures/tropical leaf/tropical-leaf-unity/tropical-leaf_normal-ogl.png" id="2_nso8e"]
+
+[resource]
+transparency = 2
+alpha_scissor_threshold = 0.5
+alpha_antialiasing_mode = 0
+cull_mode = 2
+diffuse_mode = 1
+albedo_color = Color(0.61473125, 0.6174445, 0.6248642, 1)
+albedo_texture = ExtResource("1_x7ocu")
+normal_enabled = true
+normal_texture = ExtResource("2_nso8e")
+heightmap_scale = -3.892
+heightmap_deep_parallax = true
+heightmap_min_layers = 64
+heightmap_max_layers = 64

@@ -76,11 +76,6 @@ func _render_callback(
 		return
 
 	var workgroup_size := _get_workgroup_size()
-	#_workgroups = Vector3i(
-		#ceil(((float(render_size.x) - 1) / workgroup_size) + 1),
-		#ceil(((float(render_size.y) - 1) / workgroup_size) + 1),
-		#1,
-	#)
 	_workgroups = Vector3i(
 			(render_size.x - 1) / workgroup_size + 1, 
 			(render_size.y - 1) / workgroup_size + 1, 
@@ -91,7 +86,6 @@ func _render_callback(
 
 	for view in render_scene_buffers.get_view_count():
 		_render_view(view)
-
 
 
 # ---------------------------------------------------------------------------
