@@ -6,6 +6,7 @@
 .import/
 export.cfg
 export_credentials.cfg
+src/addons/
 
 # Imported translations (automatically generated from CSV files)
 *.translation
@@ -14,3 +15,9 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# Editor junk
+.idea/
+*.kate-swp
+
+ai-context/

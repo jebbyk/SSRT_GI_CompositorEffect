@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://ji4d67vjyawm"]
+
+[ext_resource type="Material" uid="uid://bhd13k87ajck3" path="res://Nature/mat_trunk.tres" id="1_trunk"]
+[ext_resource type="Texture2D" uid="uid://bdde721f3gdag" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_Alpha.png" id="2_4r0of"]
+[ext_resource type="Texture2D" uid="uid://dr3jdl4ooiku4" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_Translucency.jpg" id="3_yao6w"]
+[ext_resource type="Texture2D" uid="uid://cndh27f65m6qk" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_Height.jpg" id="4_8ge85"]
+[ext_resource type="Texture2D" uid="uid://ccrefevp76g4g" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_Metallic.jpg" id="5_rp5pk"]
+[ext_resource type="Texture2D" uid="uid://bh2jrkjq32mxk" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_NormalOpenGL.jpg" id="6_6hp7t"]
+[ext_resource type="Texture2D" uid="uid://denur7fxwji2k" path="res://Textures/assetfile_5951_507bcb67f84bc882/Atlas-1238-A_Roughness.jpg" id="7_ylcp7"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_njel3"]
+transparency = 2
+alpha_scissor_threshold = 0.106
+alpha_antialiasing_mode = 0
+albedo_texture = ExtResource("2_4r0of")
+metallic = 1.0
+metallic_texture = ExtResource("5_rp5pk")
+roughness_texture = ExtResource("7_ylcp7")
+normal_enabled = true
+normal_scale = 2.0
+normal_texture = ExtResource("6_6hp7t")
+heightmap_scale = -4.8
+heightmap_deep_parallax = true
+heightmap_min_layers = 64
+heightmap_max_layers = 64
+heightmap_texture = ExtResource("4_8ge85")
+subsurf_scatter_strength = 1.0
+subsurf_scatter_texture = ExtResource("3_yao6w")
+backlight_enabled = true
+backlight_texture = ExtResource("3_yao6w")
+
+[node name="Tree" type="Tree3D" unique_id=1687857117]
+seed = 42
+trunk_segments = 10
+trunk_branches_count = 8
+trunk_branch_length_falloff = 0.788
+trunk_drop_amount = -0.02
+trunk_max_radius = 0.2
+trunk_radius_falloff_rate = 0.66
+twig_scale = 0.09
+material_trunk = ExtResource("1_trunk")
+material_twig = SubResource("StandardMaterial3D_njel3")
