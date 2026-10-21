@@ -157,7 +157,7 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 16
+rays_amount = 2
 steps_per_ray = 64
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
@@ -186,7 +186,7 @@ compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buyp
 resource_local_to_scene = true
 render_priority = 127
 shader = ExtResource("1_f8t32")
-shader_parameter/raysAmount = 64.0
+shader_parameter/raysAmount = 16.0
 shader_parameter/stepsPerRay = 64.0
 shader_parameter/intencity = 3.00000014180148
 shader_parameter/aoIntencity = 4.00000018930148
@@ -649,7 +649,6 @@ compositor = SubResource("Compositor_n8ajh")
 
 [node name="Camera3D-free-look" type="Camera3D" parent="." unique_id=790363406]
 transform = Transform3D(-0.98710275, 0.022279916, -0.15853001, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
-visible = false
 script = ExtResource("2_48kf0")
 
 [node name="ssrt_sp" type="MeshInstance3D" parent="Camera3D-free-look" unique_id=314010324]
@@ -673,13 +672,13 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1225, 902)
+size = Vector2i(1119, 902)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.37212652, -0.466953, 0.80217004, 0, 0.86423784, 0.50308347, -0.928182, 0.1872107, -0.32160583, 11.678112, 10.345168, -7.243511)
+transform = Transform3D(0.8129447, -0.36611724, 0.4528566, 0, 0.7776486, 0.6286992, -0.5823409, -0.51109767, 0.63218534, 4.5256524, 8.285944, 11.719159)
 fov = 70.01
 size = 11.230892

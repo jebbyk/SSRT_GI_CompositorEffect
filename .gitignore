@@ -16,4 +16,8 @@ src/addons/
 data_*/
 mono_crash.*.json
 
+# Editor junk
+.idea/
+*.kate-swp
+
 ai-context/
