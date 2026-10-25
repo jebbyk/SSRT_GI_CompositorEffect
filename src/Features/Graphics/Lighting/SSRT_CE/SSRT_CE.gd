@@ -20,6 +20,7 @@ extends BaseCompositorEffect
 const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"
 const BLUR_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/blur.glsl"
 const MIX_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix.glsl"
+const MIX_EMA_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_ema.glsl"
 
 const USE_DEBUG_IMAGE = false
 
@@ -37,6 +38,10 @@ const MIX_ALBEDO_GI_CONSTANT: int = 0
 
 #Mix pass: set 1 bindings
 const ALBEDO_TEXTURE_BINDING := 1
+const HISTORY_IMAGE_BINDING := 2
+
+#Temporal history texture (EMA), created in the shared context, one RGBA16F frame.
+const HISTORY_TEXTURE_NAME: StringName = &"SSRT_History"
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
@@ -81,6 +86,19 @@ var blur_pipelines : Array
 
 var mix_shader : RID
 var mix_pipeline : RID
+
+var mix_ema_shader : RID
+var mix_ema_pipeline : RID
+var history_image_uniform : RDUniform
+var accumulation_weight : float = 1.0
+
+#Per-viewport flag that the EMA history has been written at least once, keyed by
+#the RenderSceneBuffers instance id (stable per viewport). First frame reads no
+#history so uninitialized memory never leaks into the result.
+var _ema_valid_by_vp : Dictionary = {}
+
+#Prints once per mode switch into an unimplemented box mode.
+var _box_mode_warned : bool = false
 
 #Albedo (unlit) source state, see albedo_handoff.gd
 var albedo_sampler : RID
@@ -130,12 +148,21 @@ func _render_setup() -> void:
 		create_trace_pipeline()
 		create_blur_pipelines()
 		create_mix_pipeline()
+		create_mix_ema_pipeline()
 		shaders_dirty = false
+		_report_vram_estimate()
 	
 	_resolve_albedo_texture()
 	
 	if not render_scene_buffers.has_texture(context, texture_a):
 		create_textures()
+	
+	#2/(N+1): classic EMA-to-SMA match, so the slider reads as a "~N-frame average"
+	#(mean lag (N-1)/2 frames). N=1 -> weight 1.0 -> identical to no accumulation.
+	accumulation_weight = 2.0 / float(settings.accumulation_frames + 1)
+	
+	if _ema_active() and not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
+		_create_history_texture()
 		
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
 		
@@ -184,7 +211,50 @@ func create_mix_pipeline() -> void:
 	if albedo_handoff:
 		constants[MIX_ALBEDO_GI_CONSTANT] = true
 	mix_pipeline = create_pipeline(mix_shader, constants)
+
+
+func create_mix_ema_pipeline() -> void:
+	if not mix_ema_shader.is_valid():
+		push_error("from: SSRT_CE::create_mix_ema_pipeline(). msg: Mix EMA shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(mix_ema_pipeline):
+		rd.free_rid(mix_ema_pipeline)
 	
+	var constants := {}
+	if albedo_handoff:
+		constants[MIX_ALBEDO_GI_CONSTANT] = true
+	mix_ema_pipeline = create_pipeline(mix_ema_shader, constants)
+
+
+func _ema_active() -> bool:
+	return settings.accumulation_mode == SSRTSettings.AccumulationMode.EMA
+
+
+func _create_history_texture() -> void:
+	#One RGBA16F frame, sampleable (future reprojection reads it at an offset UV).
+	#Lives in the render_scene_buffers context: freed on clear_context (mode /
+	#frames / size change) and recreated here with the new size.
+	var history_image : RID = create_simple_texture(
+		context, HISTORY_TEXTURE_NAME, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	)
+	history_image_uniform = get_image_uniform(history_image, HISTORY_IMAGE_BINDING)
+
+
+func _report_vram_estimate() -> void:
+	#Informational: history footprint so a large mode/frame-count choice is a
+	#conscious decision, not an OOM surprise. EMA keeps exactly one frame.
+	var w : int = render_size.x
+	var h : int = render_size.y
+	var frames : int = settings.accumulation_frames if not _ema_active() else 1
+	var bytes : int = w * h * frames * settings.bytes_per_pixel()
+	var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
+	print("SSRT_CE: temporal history ≈ %.1f MB (%s, N=%d, %dx%d)" % [
+		bytes / 1048576.0,
+		mode_name,
+		settings.accumulation_frames,
+		w, h,
+	])
+
 	
 func _render_view(p_view : int) -> void:
 	#print("from: SSRT_CE::_render_view()")
@@ -255,29 +325,66 @@ func _render_view(p_view : int) -> void:
 		albedo_bind = albedo_placeholder
 	mix_uniforms.append(get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING))
 	
-	uniform_sets = [
-		scene_uniform_set,
-		mix_uniforms
-	]
-	
-	run_compute_shader(
-		"SSRT: mix",
-		mix_shader,
-		mix_pipeline,
-		uniform_sets,
-		push_constant,
-	)
+	if _ema_active():
+		#EMA temporal accumulation: bind the history image (set 1, binding 2).
+		mix_uniforms.append(history_image_uniform)
+		var vp_key : int = render_scene_buffers.get_instance_id()
+		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
+		#The mix_ema push constant extends the base 16-byte one with weight/valid,
+		#to 24 bytes — must match the shader's declared size exactly (no padding).
+		var ema_push : PackedFloat32Array = push_constant.duplicate()
+		ema_push.push_back(accumulation_weight)
+		ema_push.push_back(history_valid)
+		uniform_sets = [
+			scene_uniform_set,
+			mix_uniforms
+		]
+		run_compute_shader(
+			"SSRT: mix (EMA)",
+			mix_ema_shader,
+			mix_ema_pipeline,
+			uniform_sets,
+			ema_push,
+		)
+		#The albedo SubViewport auto-skips this pass, so flagging it valid is
+		#harmless: it never reads the history.
+		_ema_valid_by_vp[vp_key] = true
+	else:
+		#BOX8 / BOX16F are not implemented yet; composite the per-frame estimate.
+		if not _box_mode_warned:
+			var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
+			push_warning("from: SSRT_CE::_render_view(). msg: Accumulation mode %s is not implemented yet, using no temporal accumulation." % mode_name)
+			_box_mode_warned = true
+		uniform_sets = [
+			scene_uniform_set,
+			mix_uniforms
+		]
+		run_compute_shader(
+			"SSRT: mix",
+			mix_shader,
+			mix_pipeline,
+			uniform_sets,
+			push_constant,
+		)
 
 
 func _render_size_changed() -> void:
 	#print("from: SSRT_CE::_render_size_changed()")
 	render_scene_buffers.clear_context(context)
+	#clear_context frees the EMA history; drop the per-viewport valid flags so the
+	#recreated texture is not read before its first frame writes it.
+	_ema_valid_by_vp.clear()
+	_box_mode_warned = false
 	make_settings_dirty()
 	
 	
 func _settings_changed() -> void:
 	#print("from: SSRT_CE::_settings_changed()")
 	render_scene_buffers.clear_context(context)
+	#clear_context frees the EMA history (mode / frames / size all flow through
+	#here); reset the per-viewport valid flags and the box-mode warning.
+	_ema_valid_by_vp.clear()
+	_box_mode_warned = false
 	make_settings_dirty()
 
 
@@ -399,4 +506,5 @@ func _recompile_shaders() -> void:
 	trace_shader = create_shader(TRACE_SHADER_PATH)
 	blur_shader = create_shader(BLUR_SHADER_PATH)
 	mix_shader = create_shader(MIX_SHADER_PATH)
+	mix_ema_shader = create_shader(MIX_EMA_SHADER_PATH)
 	shaders_dirty = true

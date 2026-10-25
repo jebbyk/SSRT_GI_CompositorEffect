@@ -129,3 +129,36 @@ signal s_changed
 			return
 		blur_plane_treshold = value
 		s_changed.emit()
+
+
+@export_category("Temporal settings")
+enum AccumulationMode { EMA, BOX8, BOX16F }
+
+## Temporal accumulation mode. EMA: exponential, one frame of history
+## (implemented). BOX8 / BOX16F: flat N-frame average, not implemented yet —
+## selecting one falls back to no accumulation. (Plain @export takes no tooltip
+## argument in Godot 4.7, so this note is doc-only, not an inspector tooltip.)
+@export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
+	set(value):
+		if accumulation_mode == value:
+			return
+		accumulation_mode = value
+		s_changed.emit()
+
+
+## EMA window size in frames: weight = 2/(N+1), i.e. the classic EMA match to a
+## flat ~N-frame average (mean lag (N-1)/2 frames). 1 = accumulation off.
+@export_range(1, 256, 1, "EMA window (frames): behaves like a flat average of ~N frames (mean lag (N-1)/2 frames). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+	set(value):
+		if accumulation_frames == value:
+			return
+		accumulation_frames = value
+		s_changed.emit()
+
+
+## Bytes per pixel of the temporal history, for the VRAM estimate readout.
+## BOX8 stores 4 bytes/px (RGBA8); EMA and BOX16F store 8 bytes/px (RGBA16F).
+func bytes_per_pixel() -> int:
+	if accumulation_mode == AccumulationMode.BOX8:
+		return 4
+	return 8
