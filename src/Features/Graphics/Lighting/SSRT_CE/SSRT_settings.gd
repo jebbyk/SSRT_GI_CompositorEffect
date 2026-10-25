@@ -134,10 +134,12 @@ signal s_changed
 @export_category("Temporal settings")
 enum AccumulationMode { EMA, BOX8, BOX16F }
 
-## Temporal accumulation mode. EMA: exponential, one frame of history
-## (implemented). BOX8 / BOX16F: flat N-frame average, not implemented yet —
-## selecting one falls back to no accumulation. (Plain @export takes no tooltip
-## argument in Godot 4.7, so this note is doc-only, not an inspector tooltip.)
+## Temporal accumulation mode. EMA: exponential, one frame of history, window
+## of ~N frames (mean lag (N-1)/2). BOX8: exact flat average of the last N
+## frames in RGBA8 (RGB stored * 1/256, ~1.0 precision after decode, cheapest
+## VRAM). BOX16F: the same exact N-frame average at full RGBA16F precision
+## (most VRAM). (Plain @export takes no tooltip argument in Godot 4.7, so this
+## note is doc-only, not an inspector tooltip.)
 @export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
 	set(value):
 		if accumulation_mode == value:
@@ -146,9 +148,10 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## EMA window size in frames: weight = 2/(N+1), i.e. the classic EMA match to a
-## flat ~N-frame average (mean lag (N-1)/2 frames). 1 = accumulation off.
-@export_range(1, 256, 1, "EMA window (frames): behaves like a flat average of ~N frames (mean lag (N-1)/2 frames). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+## Temporal window in frames. EMA: weight = 2/(N+1), the classic match to a
+## flat ~N-frame average (mean lag (N-1)/2). BOX8 / BOX16F: exact flat average
+## of the last N frames (history depth = N). 1 = accumulation off.
+@export_range(1, 256, 1, "Temporal window (frames): EMA ≈ flat average of ~N frames (mean lag (N-1)/2); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
 	set(value):
 		if accumulation_frames == value:
 			return

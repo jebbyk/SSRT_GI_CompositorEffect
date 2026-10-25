@@ -21,6 +21,8 @@ const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/tra
 const BLUR_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/blur.glsl"
 const MIX_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix.glsl"
 const MIX_EMA_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_ema.glsl"
+const MIX_BOX8_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box8.glsl"
+const MIX_BOX16F_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box16f.glsl"
 
 const USE_DEBUG_IMAGE = false
 
@@ -89,15 +91,30 @@ var mix_pipeline : RID
 
 var mix_ema_shader : RID
 var mix_ema_pipeline : RID
+var mix_box8_shader : RID
+var mix_box8_pipeline : RID
+var mix_box16f_shader : RID
+var mix_box16f_pipeline : RID
 var history_image_uniform : RDUniform
 var accumulation_weight : float = 1.0
+
+#Box-mode history: manual RID 3D texture (N slices, one per accumulated frame);
+#create_simple_texture is 2D-only. Freed in _free_box_history(), tracked in
+#_rids_to_free as a predelete safety net.
+var box_history_texture : RID
+#Per-viewport frame counter for the rolling box slot (slot = frame % N), keyed by
+#the RenderSceneBuffers instance id. First frame: valid_count = 1 -> itself only.
+var _box_frame_by_vp : Dictionary = {}
+var box_slot_index : float = 0.0
+var box_valid_count : float = 1.0
 
 #Per-viewport flag that the EMA history has been written at least once, keyed by
 #the RenderSceneBuffers instance id (stable per viewport). First frame reads no
 #history so uninitialized memory never leaks into the result.
 var _ema_valid_by_vp : Dictionary = {}
 
-#Prints once per mode switch into an unimplemented box mode.
+#Prints once per settings/size change while a box mode falls back to the plain
+#mix pass because the 3D history texture could not be created.
 var _box_mode_warned : bool = false
 
 #Albedo (unlit) source state, see albedo_handoff.gd
@@ -149,6 +166,8 @@ func _render_setup() -> void:
 		create_blur_pipelines()
 		create_mix_pipeline()
 		create_mix_ema_pipeline()
+		create_mix_box8_pipeline()
+		create_mix_box16f_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
 	
@@ -161,8 +180,11 @@ func _render_setup() -> void:
 	#(mean lag (N-1)/2 frames). N=1 -> weight 1.0 -> identical to no accumulation.
 	accumulation_weight = 2.0 / float(settings.accumulation_frames + 1)
 	
-	if _ema_active() and not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
-		_create_history_texture()
+	if _ema_active():
+		if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
+			_create_history_texture()
+	elif _box_wanted() and not box_history_texture.is_valid():
+		_create_box_history_texture()
 		
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
 		
@@ -226,6 +248,32 @@ func create_mix_ema_pipeline() -> void:
 	mix_ema_pipeline = create_pipeline(mix_ema_shader, constants)
 
 
+func create_mix_box8_pipeline() -> void:
+	if not mix_box8_shader.is_valid():
+		push_error("from: SSRT_CE::create_mix_box8_pipeline(). msg: Mix BOX8 shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(mix_box8_pipeline):
+		rd.free_rid(mix_box8_pipeline)
+	
+	var constants := {}
+	if albedo_handoff:
+		constants[MIX_ALBEDO_GI_CONSTANT] = true
+	mix_box8_pipeline = create_pipeline(mix_box8_shader, constants)
+
+
+func create_mix_box16f_pipeline() -> void:
+	if not mix_box16f_shader.is_valid():
+		push_error("from: SSRT_CE::create_mix_box16f_pipeline(). msg: Mix BOX16F shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(mix_box16f_pipeline):
+		rd.free_rid(mix_box16f_pipeline)
+	
+	var constants := {}
+	if albedo_handoff:
+		constants[MIX_ALBEDO_GI_CONSTANT] = true
+	mix_box16f_pipeline = create_pipeline(mix_box16f_shader, constants)
+
+
 func _ema_active() -> bool:
 	return settings.accumulation_mode == SSRTSettings.AccumulationMode.EMA
 
@@ -238,6 +286,49 @@ func _create_history_texture() -> void:
 		context, HISTORY_TEXTURE_NAME, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 	)
 	history_image_uniform = get_image_uniform(history_image, HISTORY_IMAGE_BINDING)
+
+
+func _box_wanted() -> bool:
+	var mode := settings.accumulation_mode
+	return mode == SSRTSettings.AccumulationMode.BOX8 or mode == SSRTSettings.AccumulationMode.BOX16F
+
+
+func _create_box_history_texture() -> void:
+	#N-frame 3D history (depth = N), rolling slot = frame % N. Sampleable so a
+	#future reprojection pass can read offset slices. A failed create leaves the
+	#RID invalid and the mix pass falls back to the plain mix pass.
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM \
+		if settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8 \
+		else RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	format.width = render_size.x
+	format.height = render_size.y
+	#The 3D extent comes from `depth` for TEXTURE_TYPE_3D (drivers force
+	#array_layers to 1 there); N slices live in the depth dimension.
+	format.depth = settings.accumulation_frames
+	format.array_layers = 1
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_3D
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+
+	var view := RDTextureView.new()
+	box_history_texture = rd.texture_create(format, view, [])
+	if not box_history_texture.is_valid():
+		push_error("from: SSRT_CE::_create_box_history_texture(). msg: 3D history texture creation failed (%dx%dxN, N=%d)." % [
+			render_size.x,
+			render_size.y,
+			settings.accumulation_frames,
+		])
+		return
+	add_rid_to_free(box_history_texture, "box history texture")
+	history_image_uniform = get_image_uniform(box_history_texture, HISTORY_IMAGE_BINDING)
+
+
+func _free_box_history() -> void:
+	if box_history_texture.is_valid():
+		free_rid(box_history_texture)
+		box_history_texture = RID()
 
 
 func _report_vram_estimate() -> void:
@@ -349,11 +440,43 @@ func _render_view(p_view : int) -> void:
 		#The albedo SubViewport auto-skips this pass, so flagging it valid is
 		#harmless: it never reads the history.
 		_ema_valid_by_vp[vp_key] = true
+	elif _box_wanted() and box_history_texture.is_valid():
+		#Flat N-frame average: the shader writes the current frame to the rolling
+		#slot and averages the last min(frame+1, N) slots. The albedo SubViewport
+		#auto-skips this pass, so advancing its counter is harmless (it never
+		#writes the shared history).
+		var is_box8 : bool = settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8
+		var box_shader : RID = mix_box8_shader if is_box8 else mix_box16f_shader
+		var box_pipeline : RID = mix_box8_pipeline if is_box8 else mix_box16f_pipeline
+		mix_uniforms.append(history_image_uniform)
+		var vp_key : int = render_scene_buffers.get_instance_id()
+		var frame : int = _box_frame_by_vp.get(vp_key, -1) + 1
+		var n : int = settings.accumulation_frames
+		box_slot_index = float(frame % n)
+		box_valid_count = float(mini(frame + 1, n))
+		_box_frame_by_vp[vp_key] = frame
+		#Like the EMA pass: extend the base 16-byte push constant to 24 bytes
+		#(slot + valid_count), matching the shader's declared size exactly.
+		var box_push : PackedFloat32Array = push_constant.duplicate()
+		box_push.push_back(box_slot_index)
+		box_push.push_back(box_valid_count)
+		uniform_sets = [
+			scene_uniform_set,
+			mix_uniforms
+		]
+		run_compute_shader(
+			"SSRT: mix (BOX8)" if is_box8 else "SSRT: mix (BOX16F)",
+			box_shader,
+			box_pipeline,
+			uniform_sets,
+			box_push,
+		)
 	else:
-		#BOX8 / BOX16F are not implemented yet; composite the per-frame estimate.
+		#Defensive: a box mode without a valid 3D history texture composites the
+		#per-frame estimate.
 		if not _box_mode_warned:
 			var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
-			push_warning("from: SSRT_CE::_render_view(). msg: Accumulation mode %s is not implemented yet, using no temporal accumulation." % mode_name)
+			push_warning("from: SSRT_CE::_render_view(). msg: Temporal accumulation is unavailable in mode %s (no 3D history texture), using no temporal accumulation." % mode_name)
 			_box_mode_warned = true
 		uniform_sets = [
 			scene_uniform_set,
@@ -371,20 +494,26 @@ func _render_view(p_view : int) -> void:
 func _render_size_changed() -> void:
 	#print("from: SSRT_CE::_render_size_changed()")
 	render_scene_buffers.clear_context(context)
-	#clear_context frees the EMA history; drop the per-viewport valid flags so the
-	#recreated texture is not read before its first frame writes it.
+	#clear_context frees the EMA history and _free_box_history frees the box
+	#texture; drop the per-viewport state so the recreated history is not read
+	#before its first frame writes it.
 	_ema_valid_by_vp.clear()
+	_box_frame_by_vp.clear()
 	_box_mode_warned = false
+	_free_box_history()
 	make_settings_dirty()
 	
 	
 func _settings_changed() -> void:
 	#print("from: SSRT_CE::_settings_changed()")
 	render_scene_buffers.clear_context(context)
-	#clear_context frees the EMA history (mode / frames / size all flow through
-	#here); reset the per-viewport valid flags and the box-mode warning.
+	#Mode / frames / size all flow through here: clear_context frees the EMA
+	#history, _free_box_history frees the box texture, and the per-viewport
+	#counters reset so accumulation starts fresh.
 	_ema_valid_by_vp.clear()
+	_box_frame_by_vp.clear()
 	_box_mode_warned = false
+	_free_box_history()
 	make_settings_dirty()
 
 
@@ -507,4 +636,6 @@ func _recompile_shaders() -> void:
 	blur_shader = create_shader(BLUR_SHADER_PATH)
 	mix_shader = create_shader(MIX_SHADER_PATH)
 	mix_ema_shader = create_shader(MIX_EMA_SHADER_PATH)
+	mix_box8_shader = create_shader(MIX_BOX8_SHADER_PATH)
+	mix_box16f_shader = create_shader(MIX_BOX16F_SHADER_PATH)
 	shaders_dirty = true
