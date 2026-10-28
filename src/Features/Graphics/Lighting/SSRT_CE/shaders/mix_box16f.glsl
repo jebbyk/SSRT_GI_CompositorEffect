@@ -2,6 +2,7 @@
 #version 450
 
 #include "includes/scene_data.glsl"
+#include "includes/reprojection.glsl"
 
 layout(constant_id = 0) const bool ALBEDO_GI = false;
 
@@ -23,12 +24,18 @@ layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
 layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
 //N-frame RGBA16F history (depth = N): full float, HDR RGB + AO, no encoding.
 layout(rgba16f, set = 1, binding = 2) uniform image3D history;
+//Ping-pong write partner of `history`, touched only when reprojection is on:
+//the pass shifts the slots into this frame's screen space there, then the two
+//textures are swapped after the pass. With reprojection off both bindings
+//carry the same single texture and only `history` is used.
+layout(rgba16f, set = 1, binding = 3) uniform image3D history_write;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
 	vec2 albedo_size;
 	float slot_index;
 	float valid_count;
+	float reprojection_enabled;
 } params;
 
 
@@ -57,18 +64,60 @@ void main() {
 
 	vec4 GI = imageLoad(in_image, uv);
 
-	//Flat N-frame average: write the current frame to the rolling slot
-	//(frame % N), then average the last min(frame+1, N) slots; the first frame
-	//averages only itself, so uninitialized history is never read.
-	//Reprojection-compatible: read at read_uv (== uv for now, later uv + motion),
-	//write at uv. Same-texel write-then-read is ordered within one invocation.
-	ivec2 read_uv = uv;
-	imageStore(history, ivec3(uv, int(params.slot_index)), GI);
-	vec4 acc = vec4(0.0);
-	for(int i = 0; i < int(params.valid_count); i++) {
-		acc += imageLoad(history, ivec3(read_uv, i));
+	//Flat N-frame average over the rolling window (slot = frame % N). With
+	//reprojection the history is kept aligned: each frame every slot is shifted
+	//into the previous frame's screen space by the 1-frame MV (shifted copies
+	//go to history_write, the textures are swapped after the pass), so all
+	//slices are read at prev_px — exact for any camera motion, no velocity
+	//assumption. A pixel whose previous position is off-screen (newly exposed)
+	//has no valid shifted copies and resets its slots to the fresh capture.
+	//Without reprojection both bindings carry one texture and the slots are
+	//read/written at uv (the plain box average).
+	float raw_depth = imageLoad(depth_image, uv).r;
+	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
+	vec2 p = vec2(uv) + 0.5;
+	vec2 prev_px = p;
+	bool reproj = params.reprojection_enabled > 0.5;
+	if(reproj) {
+		bool in_bounds;
+		get_reprojected_px(
+			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
+			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
+			uv_center, raw_depth, size, prev_px, in_bounds);
 	}
-	acc /= params.valid_count;
+	vec4 fresh = GI;
+	int sc = int(params.valid_count);
+	int s = int(params.slot_index);
+	vec4 acc = GI;
+	if(reproj) {
+		bool rp_ok = prev_px.x >= 0.5 && prev_px.y >= 0.5
+			&& prev_px.x <= float(size.x) - 0.5 && prev_px.y <= float(size.y) - 0.5;
+		ivec2 rpv = ivec2(prev_px);
+		vec4 sum = vec4(0.0);
+		for(int i = 0; i < sc; i++) {
+			vec4 v;
+			if(i == s) {
+				v = fresh;
+			} else {
+				if(rp_ok) {
+					v = imageLoad(history, ivec3(rpv, i));
+				} else {
+					v = fresh;
+				}
+				imageStore(history_write, ivec3(uv, i), v);
+			}
+			sum += v;
+		}
+		imageStore(history_write, ivec3(uv, s), fresh);
+		acc = sum / float(sc);
+	} else {
+		imageStore(history, ivec3(uv, s), fresh);
+		vec4 sum = vec4(0.0);
+		for(int i = 0; i < sc; i++) {
+			sum += imageLoad(history, ivec3(uv, i));
+		}
+		acc = sum / float(sc);
+	}
 
 	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
 	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit

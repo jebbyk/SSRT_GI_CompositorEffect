@@ -136,10 +136,10 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 
 ## Temporal accumulation mode. EMA: exponential, one frame of history, window
 ## of ~N frames (mean lag (N-1)/2). BOX8: exact flat average of the last N
-## frames in RGBA8 (RGB stored * 1/256, ~1.0 precision after decode, cheapest
-## VRAM). BOX16F: the same exact N-frame average at full RGBA16F precision
-## (most VRAM). (Plain @export takes no tooltip argument in Godot 4.7, so this
-## note is doc-only, not an inspector tooltip.)
+## frames in RGBA8 (RGB stored * 1/8, ~0.031 precision, values above 8 clip,
+## cheapest VRAM). BOX16F: the same exact N-frame average at full RGBA16F
+## precision (most VRAM). (Plain @export takes no tooltip argument in Godot
+## 4.7, so this note is doc-only, not an inspector tooltip.)
 @export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
 	set(value):
 		if accumulation_mode == value:
@@ -156,6 +156,17 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		if accumulation_frames == value:
 			return
 		accumulation_frames = value
+		s_changed.emit()
+
+
+## Reproject the history read to the pixel's previous-frame position (derived
+## from depth + the scene UBO's prev-frame camera). Off = history is read at
+## the same pixel, which ghosts whenever the camera moves.
+@export var reprojection_enabled: bool = true:
+	set(value):
+		if reprojection_enabled == value:
+			return
+		reprojection_enabled = value
 		s_changed.emit()
 
 

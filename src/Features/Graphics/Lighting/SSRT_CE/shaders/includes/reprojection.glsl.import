@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dfuywk4kbifb5"
+path="res://.godot/imported/reprojection.glsl-8cd8832f98dc6ddda3b8026065ddfaf3.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/includes/reprojection.glsl"
+dest_files=["res://.godot/imported/reprojection.glsl-8cd8832f98dc6ddda3b8026065ddfaf3.res"]
+
+[params]
+

@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://ji4d67vjyawm" path="res://Nature/tree.tscn" id="3_vr1i5"]
 [ext_resource type="Script" uid="uid://dufx3i0ilcvu6" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_handoff.gd" id="4_handoff"]
 [ext_resource type="Script" uid="uid://c580tb3qpuiwx" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_source_viewport.gd" id="5_albsrc"]
+[ext_resource type="Script" uid="uid://boqxebmjs7bpl" path="res://Features/Testing/fps_counter.gd" id="11_rpuu0"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4m2n"]
 cull_mode = 2
@@ -156,16 +157,15 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 32
 steps_per_ray = 64
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
 z_thickness = 8.0
-blur_kernel_size = 1
-blur_steps = 0
-blur_normal_treshold = 0.0
+blur_kernel_size = 3
+blur_steps = 2
 blur_plane_treshold = 0.333
-accumulation_frames = 8
+accumulation_mode = 1
+accumulation_frames = 10
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -257,7 +257,7 @@ mesh = SubResource("QuadMesh_u8xit")
 skeleton = NodePath("../..")
 
 [node name="MeshInstance3D9" type="MeshInstance3D" parent="building" unique_id=672144995]
-transform = Transform3D(3.343247, 0, 0.00025215576, 0, 3.0428395, 0, -0.0012837902, 0, 0.6566641, -6.338311, 2.2186, 8.181907)
+transform = Transform3D(3.343247, 0, 0.00025215576, 0, 3.0428395, 0, -0.0012837902, 0, 0.6566641, -6.5865884, 2.2186, 9.645057)
 material_override = SubResource("StandardMaterial3D_46pal")
 mesh = SubResource("QuadMesh_u8xit")
 skeleton = NodePath("../..")
@@ -638,7 +638,6 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8580036, 0.041643657, -0.5119527, 0.40380153, -0.6706864, 0.62219304, -0.3174492, -0.7405712, -0.5922672, 5.7162585, 1.8341535, -3.6544616)
-visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -682,13 +681,29 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1292, 581)
+size = Vector2i(1401, 902)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.9649831, -0.10858971, 0.23878016, 0, 0.91028994, 0.4139713, -0.2623122, 0.39947528, -0.8784144, -2.8449707, 4.6510363, -4.6851897)
+transform = Transform3D(-0.9898379, 0.04560147, -0.13469017, 0, 0.94718605, 0.3206847, 0.14220034, 0.31742585, -0.9375606, 7.519334, 4.757308, -4.9258366)
 fov = 70.01
 size = 11.230892
+
+[node name="Hud" type="CanvasLayer" parent="." unique_id=926596220]
+
+[node name="FpsCounter" type="Label" parent="Hud" unique_id=1668790363]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -240.0
+offset_top = 10.0
+offset_right = -16.0
+offset_bottom = 46.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.07, 0.07, 0.07, 0.85)
+theme_override_font_sizes/font_size = 22
+horizontal_alignment = 2
+script = ExtResource("11_rpuu0")

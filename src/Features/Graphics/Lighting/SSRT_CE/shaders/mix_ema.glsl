@@ -2,6 +2,7 @@
 #version 450
 
 #include "includes/scene_data.glsl"
+#include "includes/reprojection.glsl"
 
 layout(constant_id = 0) const bool ALBEDO_GI = false;
 
@@ -30,6 +31,7 @@ layout(push_constant, std430) uniform Params {
 	vec2 albedo_size;
 	float accumulation_weight;
 	float history_valid;
+	float reprojection_enabled;
 } params;
 
 
@@ -62,12 +64,30 @@ void main() {
 	//current denoised GI into it with weight = 2/(N+1) (matches a flat ~N-frame
 	//average; N=1 -> weight 1 -> no accumulation). First frame (history_valid = 0)
 	//uses the current estimate directly so uninitialized history is never read.
-	//Reprojection-compatible: read at read_uv (== uv for now, later uv + motion),
-	//write the current frame at uv. Same-texel write-then-read is ordered within
-	//one invocation, so no atomic is needed.
+	//Reprojection: the estimate for the world point now at `uv` lives at its
+	//previous-frame position, so the read is reprojected; the current frame is
+	//always written at uv. Same-texel write-then-read is ordered within one
+	//invocation, so no atomic is needed.
+	float raw_depth = imageLoad(depth_image, uv).r;
+	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	ivec2 read_uv = uv;
+	float history_valid = params.history_valid;
+	if(params.reprojection_enabled > 0.5) {
+		vec2 prev_px;
+		bool in_bounds;
+		get_reprojected_px(
+			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
+			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
+			uv_center, raw_depth, size, prev_px, in_bounds);
+		if(in_bounds) {
+			read_uv = ivec2(prev_px);
+		} else {
+			//Previous position off-screen: no valid history for this pixel.
+			history_valid = 0.0;
+		}
+	}
 	vec4 acc = GI;
-	if(params.history_valid > 0.5) {
+	if(history_valid > 0.5) {
 		vec4 hist = imageLoad(history, read_uv);
 		acc = mix(hist, GI, params.accumulation_weight);
 	}
