@@ -22,9 +22,10 @@ layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
 //Combined image+sampler (matches UNIFORM_TYPE_SAMPLER_WITH_TEXTURE in SSRT_CE.gd).
 layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
-//EMA history, one RGBA16F frame. Kept sampleable so a future reprojection pass
-//can read it at an offset UV.
+//EMA history: the read slot; its ping-pong partner receives this frame's write.
 layout(rgba16f, set = 1, binding = 2) uniform image2D history;
+//Ping-pong partner: written this frame, read as `history` next frame.
+layout(rgba16f, set = 1, binding = 3) uniform image2D history_write;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -66,8 +67,8 @@ void main() {
 	//uses the current estimate directly so uninitialized history is never read.
 	//Reprojection: the estimate for the world point now at `uv` lives at its
 	//previous-frame position, so the read is reprojected; the current frame is
-	//always written at uv. Same-texel write-then-read is ordered within one
-	//invocation, so no atomic is needed.
+	//written at uv into the other ping-pong slot, so a shifted read in another
+	//invocation never races this write (a barrier can't span invocations).
 	float raw_depth = imageLoad(depth_image, uv).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	ivec2 read_uv = uv;
@@ -91,7 +92,7 @@ void main() {
 		vec4 hist = imageLoad(history, read_uv);
 		acc = mix(hist, GI, params.accumulation_weight);
 	}
-	imageStore(history, uv, acc);
+	imageStore(history_write, uv, acc);
 
 	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
 	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit

@@ -157,6 +157,7 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
+rays_amount = 8
 steps_per_ray = 64
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
@@ -164,8 +165,7 @@ z_thickness = 8.0
 blur_kernel_size = 3
 blur_steps = 2
 blur_plane_treshold = 0.333
-accumulation_mode = 1
-accumulation_frames = 10
+accumulation_frames = 20
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -436,7 +436,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -8.587273, -0.64966774, 5.472679)
+transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -6.9275403, -0.64966726, 3.501866)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -638,6 +638,7 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
 transform = Transform3D(0.8580036, 0.041643657, -0.5119527, 0.40380153, -0.6706864, 0.62219304, -0.3174492, -0.7405712, -0.5922672, 5.7162585, 1.8341535, -3.6544616)
+visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -688,7 +689,7 @@ camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.9898379, 0.04560147, -0.13469017, 0, 0.94718605, 0.3206847, 0.14220034, 0.31742585, -0.9375606, 7.519334, 4.757308, -4.9258366)
+transform = Transform3D(-0.014400339, 0.46099627, -0.88728523, 0, 0.88737726, 0.46104407, 0.99989635, 0.0066391905, -0.012778533, -21.351381, 7.3383884, -3.5885375)
 fov = 70.01
 size = 11.230892
 

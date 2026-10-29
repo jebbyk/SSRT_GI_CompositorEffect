@@ -41,11 +41,13 @@ const MIX_ALBEDO_GI_CONSTANT: int = 0
 #Mix pass: set 1 bindings
 const ALBEDO_TEXTURE_BINDING := 1
 const HISTORY_IMAGE_BINDING := 2
-#Ping-pong write partner of the box history, used while reprojection is on.
+#Ping-pong write partner of the history texture (bound by both EMA and box passes).
 const HISTORY_WRITE_BINDING := 3
 
-#Temporal history texture (EMA), created in the shared context, one RGBA16F frame.
+#Temporal history textures (EMA), created in the shared context, one RGBA16F
+#frame each, ping-ponged.
 const HISTORY_TEXTURE_NAME: StringName = &"SSRT_History"
+const HISTORY_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryWrite"
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
@@ -126,6 +128,9 @@ var box_valid_count : float = 1.0
 #the RenderSceneBuffers instance id (stable per viewport). First frame reads no
 #history so uninitialized memory never leaks into the result.
 var _ema_valid_by_vp : Dictionary = {}
+#Per-viewport EMA ping-pong split (0: read SSRT_History, 1: read
+#SSRT_HistoryWrite); flipped after each mix dispatch.
+var _ema_swap_by_vp : Dictionary = {}
 
 #Prints once per settings/size change while a box mode falls back to the plain
 #mix pass because the 3D history texture could not be created.
@@ -198,16 +203,17 @@ func _render_setup() -> void:
 	accumulation_weight = 2.0 / float(settings.accumulation_frames + 1)
 	
 	if _ema_active():
-		if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
+		var vp_key : int = render_scene_buffers.get_instance_id()
+		if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME) \
+		   or not render_scene_buffers.has_texture(context, HISTORY_WRITE_TEXTURE_NAME):
 			_create_history_texture()
+			#Fresh ping-pong pair: define the first read/write split.
+			_ema_swap_by_vp[vp_key] = 0
 		else:
-			#Rebind every frame: after a box->EMA switch the uniform may still
-			#hold the (freed) box history RID; only _create_history_texture
-			#updates it, and that only runs on first create.
-			var hist : RID = render_scene_buffers.get_texture_slice(
-				context, HISTORY_TEXTURE_NAME, 0, 0, 1, 1
-			)
-			history_image_uniform = get_image_uniform(hist, HISTORY_IMAGE_BINDING)
+			#Rebind every frame: after a box->EMA switch the uniforms may still
+			#hold the (freed) box history RIDs, and the split flips after each
+			#mix dispatch.
+			_rebind_ema_uniforms(vp_key)
 	elif _box_wanted():
 		_ensure_box_history()
 		
@@ -304,13 +310,39 @@ func _ema_active() -> bool:
 
 
 func _create_history_texture() -> void:
-	#One RGBA16F frame, sampleable (future reprojection reads it at an offset UV).
-	#Lives in the render_scene_buffers context: freed on clear_context (mode /
-	#frames / size change) and recreated here with the new size.
-	var history_image : RID = create_simple_texture(
-		context, HISTORY_TEXTURE_NAME, RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	#Two ping-pong RGBA16F frames, sampleable (reprojection reads the other
+	#slot at an offset UV). Live in the render_scene_buffers context: freed on
+	#clear_context (mode / frames / size change) and recreated here. Created
+	#per name so a context holding only one of the pair completes in place.
+	var format := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
+		var history_image : RID = create_simple_texture(
+			context, HISTORY_TEXTURE_NAME, format
+		)
+		history_image_uniform = get_image_uniform(history_image, HISTORY_IMAGE_BINDING)
+	if not render_scene_buffers.has_texture(context, HISTORY_WRITE_TEXTURE_NAME):
+		var history_write_image : RID = create_simple_texture(
+			context, HISTORY_WRITE_TEXTURE_NAME, format
+		)
+		history_write_uniform = get_image_uniform(history_write_image, HISTORY_WRITE_BINDING)
+
+
+func _rebind_ema_uniforms(p_vp_key: int) -> void:
+	#Ping-pong split: one texture is read (history), the other written
+	#(history_write), flipped after each mix dispatch.
+	var read_name : StringName = HISTORY_TEXTURE_NAME
+	var write_name : StringName = HISTORY_WRITE_TEXTURE_NAME
+	if _ema_swap_by_vp.get(p_vp_key, 0) == 1:
+		read_name = HISTORY_WRITE_TEXTURE_NAME
+		write_name = HISTORY_TEXTURE_NAME
+	history_image_uniform = get_image_uniform(
+		render_scene_buffers.get_texture_slice(context, read_name, 0, 0, 1, 1),
+		HISTORY_IMAGE_BINDING
 	)
-	history_image_uniform = get_image_uniform(history_image, HISTORY_IMAGE_BINDING)
+	history_write_uniform = get_image_uniform(
+		render_scene_buffers.get_texture_slice(context, write_name, 0, 0, 1, 1),
+		HISTORY_WRITE_BINDING
+	)
 
 
 func _box_wanted() -> bool:
@@ -414,11 +446,11 @@ func _free_box_history() -> void:
 
 func _report_vram_estimate() -> void:
 	#Informational: history footprint so a large mode/frame-count choice is a
-	#conscious decision, not an OOM surprise. EMA keeps exactly one frame.
+	#conscious decision, not an OOM surprise. EMA keeps one ping-pong pair.
 	var w : int = render_size.x
 	var h : int = render_size.y
 	var frames : int = settings.accumulation_frames if not _ema_active() else 1
-	var copies : int = 2 if _box_wanted() and settings.reprojection_enabled else 1
+	var copies : int = 2 if _ema_active() or (_box_wanted() and settings.reprojection_enabled) else 1
 	var bytes : int = w * h * frames * settings.bytes_per_pixel() * copies
 	var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
 	print("SSRT_CE: temporal history ≈ %.1f MB (%s, N=%d, %dx%d%s)" % [
@@ -500,8 +532,10 @@ func _render_view(p_view : int) -> void:
 	mix_uniforms.append(get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING))
 	
 	if _ema_active():
-		#EMA temporal accumulation: bind the history image (set 1, binding 2).
+		#EMA temporal accumulation: bind the history image (set 1, binding 2)
+		#and its ping-pong write partner (binding 3).
 		mix_uniforms.append(history_image_uniform)
+		mix_uniforms.append(history_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
 		#The mix_ema push constant extends the base 16-byte one with weight/valid
@@ -522,9 +556,10 @@ func _render_view(p_view : int) -> void:
 			uniform_sets,
 			ema_push,
 		)
-		#The albedo SubViewport auto-skips this pass, so flagging it valid is
-		#harmless: it never reads the history.
+		#The albedo SubViewport auto-skips this pass, so flagging it valid and
+		#flipping the split are harmless there: it never touches the history.
 		_ema_valid_by_vp[vp_key] = true
+		_ema_swap_by_vp[vp_key] = 1 - _ema_swap_by_vp.get(vp_key, 0)
 	elif _box_wanted() and _box_history_by_vp.has(render_scene_buffers.get_instance_id()):
 		#Flat N-frame average: the shader writes the current frame to the rolling
 		#slot and averages the last min(frame+1, N) slots. The albedo SubViewport
@@ -598,6 +633,7 @@ func _render_size_changed() -> void:
 	#rolling counter so the recreated history is not read before its first
 	#frame writes it. Other viewports keep accumulating.
 	_ema_valid_by_vp.erase(vp_key)
+	_ema_swap_by_vp.erase(vp_key)
 	_box_frame_by_vp.erase(vp_key)
 	_drop_box_history_entry(vp_key)
 	_box_mode_warned = false
@@ -613,6 +649,7 @@ func _settings_changed() -> void:
 	#validity flags reset below; size changes clear via _render_size_changed
 	#(render thread, where frees work).
 	_ema_valid_by_vp.clear()
+	_ema_swap_by_vp.clear()
 	_box_frame_by_vp.clear()
 	_box_mode_warned = false
 	_free_box_history()
