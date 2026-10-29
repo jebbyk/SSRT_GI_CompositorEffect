@@ -167,13 +167,13 @@ void main() {
 			vec2 newUvCoord = probePosition.xy / probePosition.z + vec2(0.5);
 
 			if(!inScreen(ivec2(newUvCoord * vec2(size)), size)) {
-				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity;
+				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
 				break;
 			}
 
 			float probeTestDepth = get_linear_depth(ivec2(newUvCoord * vec2(size)));//slightly differs
 
-			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + settings.data.z_thickness) {
+			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + settings.data.z_thickness * stepLength) {
 				GI.a += 1.0;
 				vec3 probeTestNormal = normal_roughness_compatibility(
 					imageLoad(normal_roughness_image, ivec2(newUvCoord * vec2(size)))

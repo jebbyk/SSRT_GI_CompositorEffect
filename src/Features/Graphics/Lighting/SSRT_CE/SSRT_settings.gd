@@ -129,3 +129,50 @@ signal s_changed
 			return
 		blur_plane_treshold = value
 		s_changed.emit()
+
+
+@export_category("Temporal settings")
+enum AccumulationMode { EMA, BOX8, BOX16F }
+
+## Temporal accumulation mode. EMA: exponential, one frame of history, window
+## of ~N frames (mean lag (N-1)/2). BOX8: exact flat average of the last N
+## frames in RGBA8 (RGB stored * 1/8, ~0.031 precision, values above 8 clip,
+## cheapest VRAM). BOX16F: the same exact N-frame average at full RGBA16F
+## precision (most VRAM). (Plain @export takes no tooltip argument in Godot
+## 4.7, so this note is doc-only, not an inspector tooltip.)
+@export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
+	set(value):
+		if accumulation_mode == value:
+			return
+		accumulation_mode = value
+		s_changed.emit()
+
+
+## Temporal window in frames. EMA: weight = 2/(N+1), the classic match to a
+## flat ~N-frame average (mean lag (N-1)/2). BOX8 / BOX16F: exact flat average
+## of the last N frames (history depth = N). 1 = accumulation off.
+@export_range(1, 256, 1, "Temporal window (frames): EMA ≈ flat average of ~N frames (mean lag (N-1)/2); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+	set(value):
+		if accumulation_frames == value:
+			return
+		accumulation_frames = value
+		s_changed.emit()
+
+
+## Reproject the history read to the pixel's previous-frame position (derived
+## from depth + the scene UBO's prev-frame camera). Off = history is read at
+## the same pixel, which ghosts whenever the camera moves.
+@export var reprojection_enabled: bool = true:
+	set(value):
+		if reprojection_enabled == value:
+			return
+		reprojection_enabled = value
+		s_changed.emit()
+
+
+## Bytes per pixel of the temporal history, for the VRAM estimate readout.
+## BOX8 stores 4 bytes/px (RGBA8); EMA and BOX16F store 8 bytes/px (RGBA16F).
+func bytes_per_pixel() -> int:
+	if accumulation_mode == AccumulationMode.BOX8:
+		return 4
+	return 8
