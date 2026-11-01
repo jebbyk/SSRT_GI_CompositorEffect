@@ -170,6 +170,21 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
+@export_category("Debug")
+enum DebugView { NONE, MOTION_VECTORS }
+
+## Replaces the effect output with a debug overlay. MOTION_VECTORS draws the
+## per-pixel motion derived from depth + the prev-frame camera: gray = static,
+## tinted = motion (R = x, G = y, 64 px = full range), red = previous position
+## off-screen. Skips the trace/blur/mix passes.
+@export var debug_view: DebugView = DebugView.NONE:
+	set(value):
+		if debug_view == value:
+			return
+		debug_view = value
+		s_changed.emit()
+
+
 ## Bytes per pixel of the temporal history, for the VRAM estimate readout.
 ## BOX8 stores 4 bytes/px (RGBA8); EMA and BOX16F store 8 bytes/px (RGBA16F).
 func bytes_per_pixel() -> int:

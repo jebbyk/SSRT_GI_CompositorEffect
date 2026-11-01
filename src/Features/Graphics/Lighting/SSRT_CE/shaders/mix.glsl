@@ -59,7 +59,8 @@ void main() {
 	//modulation when ALBEDO_GI is off or the albedo size is not available.
 	vec3 albedo = color;
 	if(ALBEDO_GI && params.albedo_size.x > 0.0 && params.albedo_size.y > 0.0) {
-		vec2 albedo_uv = vec2(uv) / params.albedo_size;
+		//Normalize by raster_size (the size uv spans), not the albedo texture's own size.
+		vec2 albedo_uv = vec2(uv) / params.raster_size;
 		albedo = texture(albedo_texture, albedo_uv).rgb;
 	}
 

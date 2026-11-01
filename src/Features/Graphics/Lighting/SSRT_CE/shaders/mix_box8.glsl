@@ -17,6 +17,9 @@ layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
+//Engine velocity buffer (needs_motion_vectors): per-object screen-space delta
+//in UV units, preferred by get_reprojected_px over the camera-only path.
+layout(set = 0, binding = 4) uniform sampler2D velocity_tex;
 
 // Set 1
 layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
@@ -84,6 +87,7 @@ void main() {
 	if(reproj) {
 		bool in_bounds;
 		get_reprojected_px(
+			texture(velocity_tex, uv_center).xy,
 			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
 			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
 			uv_center, raw_depth, size, prev_px, in_bounds);
@@ -130,7 +134,8 @@ void main() {
 	//modulation when ALBEDO_GI is off or the albedo size is not available.
 	vec3 albedo = color;
 	if(ALBEDO_GI && params.albedo_size.x > 0.0 && params.albedo_size.y > 0.0) {
-		vec2 albedo_uv = vec2(uv) / params.albedo_size;
+		//Normalize by raster_size (the size uv spans), not the albedo texture's own size.
+		vec2 albedo_uv = vec2(uv) / params.raster_size;
 		albedo = texture(albedo_texture, albedo_uv).rgb;
 	}
 

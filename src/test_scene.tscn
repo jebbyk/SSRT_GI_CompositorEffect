@@ -157,15 +157,13 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 8
-steps_per_ray = 64
+rays_amount = 16
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
 z_thickness = 8.0
 blur_kernel_size = 3
-blur_steps = 2
-blur_plane_treshold = 0.333
-accumulation_frames = 20
+blur_plane_treshold = 0.35
+accumulation_frames = 10
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -424,11 +422,12 @@ gi_mode = 2
 gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
-[node name="Node3D" type="Node3D" parent="building" unique_id=1384700763]
-transform = Transform3D(-4.615224e-07, 0.9869391, 0, -10.5583935, -4.3140496e-08, 0, 0, 0, 0.7187654, -3.8908448, 0.4592483, -16.662704)
+[node name="rot_cube_origin" type="Node3D" parent="building" unique_id=1384700763]
+transform = Transform3D(3.3837375e-07, -0.7235934, -0.48879367, -10.5583935, -4.314048e-08, 6.513507e-16, -3.1385633e-07, 0.67116433, -0.5269766, -3.8908448, 0.4592483, -16.662704)
 script = ExtResource("2_vr1i5")
+rotation_speed = Vector3(0, 90, 0)
 
-[node name="CSGBox3D25" type="CSGBox3D" parent="building/Node3D" unique_id=663577053]
+[node name="CSGBox3D25" type="CSGBox3D" parent="building/rot_cube_origin" unique_id=663577053]
 transform = Transform3D(1.0000001, 4.440892e-16, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0.14897312, 0, -2.5748749)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
@@ -436,7 +435,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -6.9275403, -0.64966726, 3.501866)
+transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -6.010762, -0.64966726, 3.501866)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -463,7 +462,7 @@ radial_segments = 24
 rings = 16
 
 [node name="Big yellow sphere origin" type="CSGSphere3D" parent="building" unique_id=688619008]
-transform = Transform3D(0.16693322, 0, 0, 0, 0.16693322, 0, 0, 0, 0.16693322, -5.0089827, 0.81341743, -6.437267)
+transform = Transform3D(0.051808055, 0, -0.15869035, 0, 0.16693322, 0, 0.15869035, 0, 0.051808055, -5.0089827, 0.81341743, -6.437267)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -637,7 +636,7 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, 3.4116602, 1.4305115e-06, -0.2489307)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.8580036, 0.041643657, -0.5119527, 0.40380153, -0.6706864, 0.62219304, -0.3174492, -0.7405712, -0.5922672, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.8773848, 0.009452553, -0.47969383, 0.3783574, -0.6284255, 0.6796522, -0.29502726, -0.7778126, -0.5549475, 5.7162585, 1.8341535, -3.6544616)
 visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
@@ -682,14 +681,14 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 fsr_sharpness = 0.0
-size = Vector2i(1401, 902)
+size = Vector2i(671, 347)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.014400339, 0.46099627, -0.88728523, 0, 0.88737726, 0.46104407, 0.99989635, 0.0066391905, -0.012778533, -21.351381, 7.3383884, -3.5885375)
+transform = Transform3D(-0.9997008, -0.00682612, 0.023488848, 0, 0.960272, 0.27906576, -0.024460617, 0.27898222, -0.9599847, -10.500338, 6.250622, -5.408429)
 fov = 70.01
 size = 11.230892
 

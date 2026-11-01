@@ -1,4 +1,5 @@
-//Screen-space reprojection from the scene UBO's current/prev camera matrices.
+//Screen-space reprojection: per-object velocity if the engine wrote one for the
+//pixel, else the scene UBO's current/prev camera matrices (camera-only path).
 //The matrices are passed individually because a block struct type (declared via
 //"layout(...) uniform BlockName { ... } var;") cannot be used as a function
 //parameter type in Godot's Vulkan GLSL mode.
@@ -16,11 +17,22 @@
 //projections are y-corrected for that space (set_depth_correction), so a raw
 //screen uv maps straight through, and the raw depth is already Vulkan NDC z.
 void get_reprojected_px(
+	vec2 velocity_uv,
 	mat4 cur_inv_projection, mat3x4 cur_inv_view,
 	mat4 prev_projection, mat3x4 prev_view,
 	vec2 uv_center, float raw_depth, ivec2 size,
 	out vec2 prev_px, out bool in_bounds)
 {
+	//Per-object velocity preferred: the engine buffer holds the full screen-space
+	//delta (camera + object motion) in UV units, so prev = cur + v is exact for
+	//both. The (-1,-1) sentinel marks pixels the engine left unwritten (sky);
+	//those fall through to the camera-only path below.
+	if(velocity_uv != vec2(-1.0, -1.0)) {
+		prev_px = (uv_center + velocity_uv) * vec2(size);
+		in_bounds = prev_px.x >= 0.5 && prev_px.y >= 0.5
+			&& prev_px.x <= float(size.x) - 0.5 && prev_px.y <= float(size.y) - 0.5;
+		return;
+	}
 	if(prev_projection[0][0] == 0.0) {
 		prev_px = uv_center * vec2(size);
 		in_bounds = true;

@@ -23,6 +23,10 @@ const MIX_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix.g
 const MIX_EMA_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_ema.glsl"
 const MIX_BOX8_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box8.glsl"
 const MIX_BOX16F_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box16f.glsl"
+const DEBUG_MV_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_mv.glsl"
+
+#Debug MV pass (set 0): engine velocity texture, bound as a sampler.
+const DEBUG_MV_VELOCITY_BINDING := 3
 
 const USE_DEBUG_IMAGE = false
 
@@ -43,6 +47,11 @@ const ALBEDO_TEXTURE_BINDING := 1
 const HISTORY_IMAGE_BINDING := 2
 #Ping-pong write partner of the history texture (bound by both EMA and box passes).
 const HISTORY_WRITE_BINDING := 3
+
+#Mix pass: set 0 binding. Per-object velocity buffer for reprojection; the shader
+#prefers it over the camera-only path and falls back on the engine's (-1,-1)
+#sentinel (pixels it left unwritten, e.g. sky).
+const MIX_VELOCITY_BINDING := 4
 
 #Temporal history textures (EMA), created in the shared context, one RGBA16F
 #frame each, ping-ponged.
@@ -99,6 +108,8 @@ var mix_box8_shader : RID
 var mix_box8_pipeline : RID
 var mix_box16f_shader : RID
 var mix_box16f_pipeline : RID
+var debug_mv_shader : RID
+var debug_mv_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
 var accumulation_weight : float = 1.0
@@ -136,6 +147,18 @@ var _ema_swap_by_vp : Dictionary = {}
 #mix pass because the 3D history texture could not be created.
 var _box_mode_warned : bool = false
 
+#Prints once when a render callback lands on the albedo source SubViewport and
+#_render_setup skips it (see _is_albedo_source_viewport). Canary: confirms the
+#main viewport owns the shared ping-pong texture rather than the albedo one.
+var _albedo_setup_skip_reported : bool = false
+
+#Memoized albedo-source detection, keyed by the same stable per-viewport
+#discriminator run_compute_shader() uses (RenderSceneBuffers instance ID). The
+#detection probes UniformSetCacheRD.get_cache(), which makes the engine print
+#the STORAGE_BIT error on the failing viewport — so the probe must run at most
+#once per viewport, not every frame.
+var _albedo_source_by_vp : Dictionary = {}
+
 #Albedo (unlit) source state, see albedo_handoff.gd
 var albedo_sampler : RID
 var albedo_placeholder : RID
@@ -170,17 +193,8 @@ func _initialize_render() -> void:
 	
 #called every frame before executing code for each view
 func _render_setup() -> void:
-	#Publish this viewport's raster to the handoff so SSRTAlbedoSource can size
-	#its render target to the exact raster the mix pass samples (in the editor
-	#the host SubViewport's `size` property does not reflect the 3D panel's
-	#render size). Written render-thread / read main-thread, see albedo_handoff.gd.
-	#The albedo SubViewport shares this world (variant B), so the compositor
-	#invokes this effect there too; its passes are then auto-skipped by
-	#run_compute_shader() (its depth layer lacks TEXTURE_USAGE_STORAGE_BIT).
-	#Both viewports render at the same raster, so the value is stable.
-	if albedo_handoff:
-		albedo_handoff.render_size = render_size
-	
+	#Build the pipelines first so the trace shader is valid for the albedo-source
+	#detection below (which tests the scene uniform set against the trace shader).
 	if not settings_ubo.is_valid() or settings_dirty or shaders_dirty:
 		#print("from: SSRT_CE::_render_setup(). msg: Settings are dirty")
 		create_settings_uniform_buffer()
@@ -190,17 +204,43 @@ func _render_setup() -> void:
 		create_mix_ema_pipeline()
 		create_mix_box8_pipeline()
 		create_mix_box16f_pipeline()
+		create_debug_mv_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
+	
+	#The albedo source SubViewport shares this world (variant B), so the compositor
+	#invokes this effect there too. Its depth layer lacks TEXTURE_USAGE_STORAGE_BIT
+	#(no MSAA), so every pass is already skipped by run_compute_shader(). Running
+	#the rest of setup there would still create the SHARED ping-pong texture at the
+	#albedo viewport's smaller raster — clobbering the main viewport's full-res
+	#texture (the "top-left quarter" render in game mode) — and publish the smaller
+	#size to the handoff (a halving cascade). The main viewport owns the texture +
+	#handoff, so skip setup entirely on the albedo source.
+	if _is_albedo_source_viewport():
+		if not _albedo_setup_skip_reported:
+			_albedo_setup_skip_reported = true
+			push_warning(
+				"SSRT_CE: render callback is on the albedo source SubViewport "
+				+ "(scene set has no STORAGE_BIT depth); setup skipped so the shared "
+				+ "ping-pong stays at the main viewport's raster."
+			)
+		return
+	
+	#Publish this viewport's raster to the handoff so SSRTAlbedoSource can size
+	#its render target to the exact raster the mix pass samples (in the editor
+	#the host SubViewport's `size` property does not reflect the 3D panel's
+	#render size). Written render-thread / read main-thread, see albedo_handoff.gd.
+	if albedo_handoff:
+		albedo_handoff.render_size = render_size
 	
 	_resolve_albedo_texture()
 	
 	if not render_scene_buffers.has_texture(context, texture_a):
 		create_textures()
 	
-	#2/(N+1): classic EMA-to-SMA match, so the slider reads as a "~N-frame average"
-	#(mean lag (N-1)/2 frames). N=1 -> weight 1.0 -> identical to no accumulation.
-	accumulation_weight = 2.0 / float(settings.accumulation_frames + 1)
+	#N=1 = accumulation off (weight 1.0). N>1: box-matched, history ~95% replaced by N frames.
+	var n = float(settings.accumulation_frames)
+	accumulation_weight = 1.0 if n <= 1.0 else 1.0 - pow(0.05, 1.0 / n)
 	
 	if _ema_active():
 		var vp_key : int = render_scene_buffers.get_instance_id()
@@ -218,8 +258,28 @@ func _render_setup() -> void:
 		_ensure_box_history()
 		
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
-		
-		
+
+
+#True when this render callback is running on the albedo source SubViewport (which
+#shares this world and therefore also runs this effect). Detected by the same
+#signal run_compute_shader() uses to skip its passes: the scene uniform set (which
+#binds the depth layer) fails to build when the depth layer lacks
+#TEXTURE_USAGE_STORAGE_BIT (no MSAA — true of the albedo source, not the main view).
+func _is_albedo_source_viewport() -> bool:
+	var vp_key : String = str(render_scene_buffers.get_instance_id()) if render_scene_buffers else "null_vp"
+	if _albedo_source_by_vp.has(vp_key):
+		return _albedo_source_by_vp[vp_key]
+	if not trace_shader.is_valid():
+		return false
+	#Probe once: the failing viewport's depth layer lacks STORAGE_BIT, so this
+	#get_cache() makes the engine print the usage-flag error. Memoize the result
+	#so it runs at most once per viewport, not every frame.
+	var scene_set := get_scene_uniform_set(0)
+	var is_albedo := not UniformSetCacheRD.get_cache(trace_shader, 0, scene_set).is_valid()
+	_albedo_source_by_vp[vp_key] = is_albedo
+	return is_albedo
+
+
 func create_trace_pipeline() -> void:
 	if not trace_shader.is_valid():
 		push_error("from: SSRT_CE::create_trace_pipeline(). msg: Trace shader is not valid")
@@ -303,6 +363,16 @@ func create_mix_box16f_pipeline() -> void:
 	if albedo_handoff:
 		constants[MIX_ALBEDO_GI_CONSTANT] = true
 	mix_box16f_pipeline = create_pipeline(mix_box16f_shader, constants)
+
+
+func create_debug_mv_pipeline() -> void:
+	if not debug_mv_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_mv_pipeline(). msg: Debug MV shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_mv_pipeline):
+		rd.free_rid(debug_mv_pipeline)
+	
+	debug_mv_pipeline = create_pipeline(debug_mv_shader)
 
 
 func _ema_active() -> bool:
@@ -467,6 +537,37 @@ func _render_view(p_view : int) -> void:
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
 	
+	#Per-object velocity buffer (set 0, MIX_VELOCITY_BINDING) for the mix
+	#passes' reprojection. Fetched once per view like the debug MV pass; the
+	#defensive mix.glsl pass keeps the plain set (it declares no velocity).
+	var velocity_image : RID = render_scene_buffers.get_velocity_texture()
+	var velocity_bind : RID = velocity_image
+	if not velocity_bind.is_valid():
+		velocity_bind = albedo_placeholder
+	var mix_scene_set : Array[RDUniform] = scene_uniform_set.duplicate()
+	mix_scene_set.append(get_sampler_uniform(velocity_bind, nearest_sampler, MIX_VELOCITY_BINDING))
+	
+	#Debug overlay replaces the effect output; trace/blur/mix would be unused.
+	#Reuses the velocity buffer fetched above (same RID; only the binding number
+	#differs). The shader falls back to camera-only reprojection for pixels it
+	#did not write.
+	if settings.debug_view == SSRTSettings.DebugView.MOTION_VECTORS:
+		var debug_mv_set : Array[RDUniform] = [
+			get_scene_data_ubo(),
+			get_color_image_uniform(p_view),
+			get_depth_image_uniform(p_view),
+			get_sampler_uniform(velocity_bind, nearest_sampler, DEBUG_MV_VELOCITY_BINDING),
+		]
+		run_compute_shader(
+			"SSRT: Debug MV",
+			debug_mv_shader,
+			debug_mv_pipeline,
+			[debug_mv_set],
+			push_constant,
+		)
+		return
+	
+	
 	var uniform_sets : Array[Array]
 	
 	#trace pass
@@ -546,7 +647,7 @@ func _render_view(p_view : int) -> void:
 		ema_push.push_back(history_valid)
 		ema_push.push_back(_reprojection_enabled())
 		uniform_sets = [
-			scene_uniform_set,
+			mix_scene_set,
 			mix_uniforms
 		]
 		run_compute_shader(
@@ -584,7 +685,7 @@ func _render_view(p_view : int) -> void:
 		box_push.push_back(box_valid_count)
 		box_push.push_back(_reprojection_enabled())
 		uniform_sets = [
-			scene_uniform_set,
+			mix_scene_set,
 			mix_uniforms
 		]
 		run_compute_shader(
@@ -785,4 +886,5 @@ func _recompile_shaders() -> void:
 	mix_ema_shader = create_shader(MIX_EMA_SHADER_PATH)
 	mix_box8_shader = create_shader(MIX_BOX8_SHADER_PATH)
 	mix_box16f_shader = create_shader(MIX_BOX16F_SHADER_PATH)
+	debug_mv_shader = create_shader(DEBUG_MV_SHADER_PATH)
 	shaders_dirty = true
