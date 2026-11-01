@@ -61,6 +61,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Probe acceptance window in ray step lengths (step-relative, not absolute world units).
 @export var z_thickness: float = 0.5:
 	set(value):
 		if z_thickness == value:
@@ -148,10 +149,10 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Temporal window in frames. EMA: weight = 2/(N+1), the classic match to a
-## flat ~N-frame average (mean lag (N-1)/2). BOX8 / BOX16F: exact flat average
+## Temporal window in frames. EMA: weight = 1 - 0.05^(1/N), so the history
+## keeps ~5% of its old value after N frames. BOX8 / BOX16F: exact flat average
 ## of the last N frames (history depth = N). 1 = accumulation off.
-@export_range(1, 256, 1, "Temporal window (frames): EMA ≈ flat average of ~N frames (mean lag (N-1)/2); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+@export_range(1, 256, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
 	set(value):
 		if accumulation_frames == value:
 			return
@@ -174,7 +175,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 enum DebugView { NONE, MOTION_VECTORS }
 
 ## Replaces the effect output with a debug overlay. MOTION_VECTORS draws the
-## per-pixel motion derived from depth + the prev-frame camera: gray = static,
+## per-pixel motion derived from depth + the prev-frame camera: black = static,
 ## tinted = motion (R = x, G = y, 64 px = full range), red = previous position
 ## off-screen. Skips the trace/blur/mix passes.
 @export var debug_view: DebugView = DebugView.NONE:

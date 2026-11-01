@@ -65,9 +65,10 @@ void main() {
 	vec4 GI = imageLoad(in_image, uv);
 
 	//EMA temporal accumulation. `history` holds the running estimate; blend the
-	//current denoised GI into it with weight = 2/(N+1) (matches a flat ~N-frame
-	//average; N=1 -> weight 1 -> no accumulation). First frame (history_valid = 0)
-	//uses the current estimate directly so uninitialized history is never read.
+	//current denoised GI into it with weight = 1 - 0.05^(1/N) (~5% of the old
+	//value remains after N frames; N=1 -> weight 1 -> no accumulation). First
+	//frame (history_valid = 0) uses the current estimate directly so
+	//uninitialized history is never read.
 	//Reprojection: the estimate for the world point now at `uv` lives at its
 	//previous-frame position, so the read is reprojected; the current frame is
 	//written at uv into the other ping-pong slot, so a shifted read in another

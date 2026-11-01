@@ -167,6 +167,7 @@ void main() {
 			vec2 newUvCoord = probePosition.xy / probePosition.z + vec2(0.5);
 
 			if(!inScreen(ivec2(newUvCoord * vec2(size)), size)) {
+				//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
 				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
 				break;
 			}
