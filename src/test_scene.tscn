@@ -423,7 +423,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="rot_cube_origin" type="Node3D" parent="building" unique_id=1384700763]
-transform = Transform3D(2.4297373e-07, -0.51958585, 0.6110934, -10.5583935, -4.314048e-08, 6.513507e-16, 3.9238546e-07, -0.83909446, -0.3784025, -3.8908448, 0.4592483, -16.662704)
+transform = Transform3D(1.02434036e-07, -0.21904954, -0.7008382, -10.5583935, -4.314048e-08, 2.0131851e-15, -4.5001093e-07, 0.96232337, -0.15952879, -3.8908448, 0.4592483, -16.662704)
 script = ExtResource("2_vr1i5")
 rotation_speed = Vector3(0, 90, 0)
 
@@ -435,11 +435,13 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -6.010762, -0.64966726, 3.501866)
+transform = Transform3D(-2.762753e-07, 0.7713291, 0.44840848, -8.087198, -4.3140478e-08, 0, 2.2053594e-07, -0.6157112, 0.5617415, -8.238224, -0.6360631, 5.2807665)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
+size = Vector3(1, 1.229, 1.685)
+script = ExtResource("2_vr1i5")
+rotation_speed = Vector3(0, 180, 0)
 
 [node name="CSGBox3D20" type="CSGBox3D" parent="building" unique_id=574614921]
 transform = Transform3D(-5.8377327e-07, 0.841451, 0, -13.355165, -3.678101e-08, 0, 0, 0, 0.841451, -5.506878, -0.7975452, -10.967128)
@@ -462,7 +464,7 @@ radial_segments = 24
 rings = 16
 
 [node name="Big yellow sphere origin" type="CSGSphere3D" parent="building" unique_id=688619008]
-transform = Transform3D(0.08949125, 0, 0.14091848, 0, 0.16693322, 0, -0.14091848, 0, 0.08949125, -5.0089827, 0.81341743, -6.437267)
+transform = Transform3D(-0.09643592, 0, 0.13626012, 0, 0.16693322, 0, -0.13626012, 0, -0.09643592, -5.0089827, 0.81341743, -6.437267)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -636,7 +638,7 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, 3.4116602, 1.4305115e-06, -0.2489307)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.6510003, 0.38546148, -0.65392494, 0.51578176, -0.8566779, 0.008499528, -0.5569266, -0.34281588, -0.75651175, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.58271873, 0.49887195, -0.6415335, 0.5060081, -0.84044397, -0.19393124, -0.6359196, -0.2116138, -0.7421762, 5.7162585, 1.8341535, -3.6544616)
 visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
@@ -680,6 +682,7 @@ autoplay = &"fly_through"
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
+scaling_3d_scale = 0.3333
 fsr_sharpness = 0.0
 size = Vector2i(335, 235)
 render_target_update_mode = 4
@@ -688,7 +691,7 @@ camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.7995835, 0.3332537, -0.49960804, 0, 0.8319106, 0.55490965, 0.60055494, 0.44369662, -0.665182, -10.549723, 7.4699507, -9.627631)
+transform = Transform3D(0.29710814, 0.2903738, -0.9096207, 0, 0.9526382, 0.30410606, 0.9548439, -0.09035238, 0.28303656, -18.058569, 5.234957, 5.819338)
 fov = 70.01
 size = 11.230892
 

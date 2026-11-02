@@ -42,15 +42,8 @@ layout(push_constant, std430) uniform Params {
 } params;
 
 
-float get_linear_depth(ivec2 uv)
-{
-	float depth = imageLoad(depth_image, uv).r;
-	vec3 ndc = vec3(uv * 2.0 - 1.0, depth);
-	vec4 view = scene.data.inv_projection_matrix * vec4(ndc, 1.0);
-	view.xyz /= view.w;
-
-	return -view.z;
-}
+#include "includes/common.glsl"
+#include "includes/albedo.glsl"
 
 void main() {
 	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
@@ -127,12 +120,7 @@ void main() {
 	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit
 	//surfaces are not overbrightened. Falls back to the legacy lit-color
 	//modulation when ALBEDO_GI is off or the albedo size is not available.
-	vec3 albedo = color;
-	if(ALBEDO_GI && params.albedo_size.x > 0.0 && params.albedo_size.y > 0.0) {
-		//Normalize by raster_size (the size uv spans), not the albedo texture's own size.
-		vec2 albedo_uv = vec2(uv) / params.raster_size;
-		albedo = texture(albedo_texture, albedo_uv).rgb;
-	}
+	vec3 albedo = get_albedo_modulation(uv, color);
 
 	imageStore(color_image, uv, vec4(mix(color + albedo * acc.rgb, vec3(0), acc.a), 1.0));
 }
