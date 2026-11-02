@@ -171,6 +171,19 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
+## Disocclusion revalidation (EMA): reject the stored history for a pixel when
+## its depth differs from the current pixel's depth by more than this relative
+## amount, so newly-exposed surfaces reset to the fresh estimate instead of
+## ghosting the old one for the accumulation window. 0 = disabled. Higher =
+## fewer false rejects (more ghosting); lower = tighter (more resets / shimmer).
+@export_range(0.0, 0.5, 0.001) var reproj_depth_threshold: float = 0.05:
+	set(value):
+		if reproj_depth_threshold == value:
+			return
+		reproj_depth_threshold = value
+		s_changed.emit()
+
+
 @export_category("Debug")
 enum DebugView { NONE, MOTION_VECTORS }
 

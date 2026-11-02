@@ -157,13 +157,13 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 32
+rays_amount = 1
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
 z_thickness = 8.0
-blur_kernel_size = 3
 blur_plane_treshold = 0.35
-accumulation_frames = 10
+accumulation_mode = 1
+accumulation_frames = 60
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -423,7 +423,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="rot_cube_origin" type="Node3D" parent="building" unique_id=1384700763]
-transform = Transform3D(1.02434036e-07, -0.21904954, -0.7008382, -10.5583935, -4.314048e-08, 2.0131851e-15, -4.5001093e-07, 0.96232337, -0.15952879, -3.8908448, 0.4592483, -16.662704)
+transform = Transform3D(-3.24753e-07, 0.69446623, 0.5107117, -10.5583935, -4.3140485e-08, 1.1250067e-15, 3.2793002e-07, -0.7012601, 0.5057639, -3.8908448, 0.4592483, -16.662704)
 script = ExtResource("2_vr1i5")
 rotation_speed = Vector3(0, 90, 0)
 
@@ -435,7 +435,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-2.762753e-07, 0.7713291, 0.44840848, -8.087198, -4.3140478e-08, 0, 2.2053594e-07, -0.6157112, 0.5617415, -8.238224, -0.6360631, 5.2807665)
+transform = Transform3D(-3.0211862e-07, 0.8434807, -0.3731945, -8.087198, -4.3140478e-08, 2.0726119e-16, -1.8354422e-07, 0.51243454, 0.6142879, -8.238224, -0.6360631, 5.2807665)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -464,7 +464,7 @@ radial_segments = 24
 rings = 16
 
 [node name="Big yellow sphere origin" type="CSGSphere3D" parent="building" unique_id=688619008]
-transform = Transform3D(-0.09643592, 0, 0.13626012, 0, 0.16693322, 0, -0.13626012, 0, -0.09643592, -5.0089827, 0.81341743, -6.437267)
+transform = Transform3D(-0.157539, 0, -0.055210233, 0, 0.16693322, 0, 0.055210233, 0, -0.157539, -5.0089827, 0.81341743, -6.437267)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -638,7 +638,7 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, 3.4116602, 1.4305115e-06, -0.2489307)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.58271873, 0.49887195, -0.6415335, 0.5060081, -0.84044397, -0.19393124, -0.6359196, -0.2116138, -0.7421762, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.5859319, 0.493535, -0.64273363, 0.5069546, -0.8420161, -0.18440515, -0.63220227, -0.217788, -0.74356455, 5.7162585, 1.8341535, -3.6544616)
 visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
@@ -684,14 +684,14 @@ use_hdr_2d = true
 scaling_3d_mode = 0
 scaling_3d_scale = 0.3333
 fsr_sharpness = 0.0
-size = Vector2i(335, 235)
+size = Vector2i(671, 471)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(0.29710814, 0.2903738, -0.9096207, 0, 0.9526382, 0.30410606, 0.9548439, -0.09035238, 0.28303656, -18.058569, 5.234957, 5.819338)
+transform = Transform3D(-0.9924695, -0.047771804, 0.112792745, 0, 0.92081547, 0.3899986, -0.12249224, 0.38706172, -0.91388124, -12.172161, 4.943906, -2.3779569)
 fov = 70.01
 size = 11.230892
 

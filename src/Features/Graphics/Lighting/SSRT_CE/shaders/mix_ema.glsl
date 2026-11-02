@@ -29,6 +29,13 @@ layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
 layout(rgba16f, set = 1, binding = 2) uniform image2D history;
 //Ping-pong partner: written this frame, read as `history` next frame.
 layout(rgba16f, set = 1, binding = 3) uniform image2D history_write;
+//Validation depth (revalidation): the depth of the surface `history` was
+//accumulated for, ping-ponged in lockstep with `history`/`history_write`.
+//Read at the reprojected position and compared against the current pixel's
+//depth; a delta beyond depth_threshold means a disocclusion -> reject the
+//stored estimate so newly-exposed pixels don't ghost the old surface.
+layout(r32f, set = 1, binding = 4) uniform image2D history_depth;
+layout(r32f, set = 1, binding = 5) uniform image2D history_depth_write;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -36,6 +43,7 @@ layout(push_constant, std430) uniform Params {
 	float accumulation_weight;
 	float history_valid;
 	float reprojection_enabled;
+	float depth_threshold;
 } params;
 
 
@@ -88,9 +96,22 @@ void main() {
 	vec4 acc = GI;
 	if(history_valid > 0.5) {
 		vec4 hist = imageLoad(history, read_uv);
-		acc = mix(hist, GI, params.accumulation_weight);
+		//Depth-delta revalidation: the stored estimate was accumulated for a
+		//surface at `stored_depth`. If that surface has moved away from the
+		//current one (disocclusion) beyond the threshold, the history is stale
+		//for this pixel -> use the fresh estimate instead of ghosting the old
+		//surface. depth_threshold <= 0 disables the check. `depth` is the
+		//current linear depth computed above for the far-plane test.
+		float stored_depth = imageLoad(history_depth, read_uv).r;
+		bool depth_ok = params.depth_threshold <= 0.0
+			|| abs(stored_depth - depth) <= params.depth_threshold * max(stored_depth, depth);
+		acc = depth_ok ? mix(hist, GI, params.accumulation_weight) : GI;
 	}
 	imageStore(history_write, uv, acc);
+	//Record this surface's depth so the next frame can revalidate its history
+	//against it (stored unconditionally: the estimate always converges to the
+	//current surface).
+	imageStore(history_depth_write, uv, vec4(depth));
 
 	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
 	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit

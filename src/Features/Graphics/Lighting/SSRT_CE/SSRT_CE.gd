@@ -47,6 +47,9 @@ const ALBEDO_TEXTURE_BINDING := 1
 const HISTORY_IMAGE_BINDING := 2
 #Ping-pong write partner of the history texture (bound by both EMA and box passes).
 const HISTORY_WRITE_BINDING := 3
+#Validation depth for disocclusion revalidation (EMA only), ping-ponged with the history.
+const HISTORY_DEPTH_BINDING := 4
+const HISTORY_DEPTH_WRITE_BINDING := 5
 
 #Mix pass: set 0 binding. Per-object velocity buffer for reprojection; the shader
 #prefers it over the camera-only path and falls back on the engine's (-1,-1)
@@ -54,9 +57,12 @@ const HISTORY_WRITE_BINDING := 3
 const MIX_VELOCITY_BINDING := 4
 
 #Temporal history textures (EMA), created in the shared context, one RGBA16F
-#frame each, ping-ponged.
+#frame each, ping-ponged. The r32f depth buffers hold the validation depth for
+#disocclusion revalidation (mix_ema.glsl), ping-ponged in lockstep.
 const HISTORY_TEXTURE_NAME: StringName = &"SSRT_History"
 const HISTORY_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryWrite"
+const HISTORY_DEPTH_TEXTURE_NAME: StringName = &"SSRT_HistoryDepth"
+const HISTORY_DEPTH_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryDepthWrite"
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
@@ -112,6 +118,8 @@ var debug_mv_shader : RID
 var debug_mv_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
+var history_depth_uniform : RDUniform
+var history_depth_write_uniform : RDUniform
 var accumulation_weight : float = 1.0
 
 #Box-mode history, per viewport: {vp_key: {"textures": [RID, RID], "swap": int,
@@ -245,7 +253,9 @@ func _render_setup() -> void:
 	if _ema_active():
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME) \
-		   or not render_scene_buffers.has_texture(context, HISTORY_WRITE_TEXTURE_NAME):
+		   or not render_scene_buffers.has_texture(context, HISTORY_WRITE_TEXTURE_NAME) \
+		   or not render_scene_buffers.has_texture(context, HISTORY_DEPTH_TEXTURE_NAME) \
+		   or not render_scene_buffers.has_texture(context, HISTORY_DEPTH_WRITE_TEXTURE_NAME):
 			_create_history_texture()
 			#Fresh ping-pong pair: define the first read/write split.
 			_ema_swap_by_vp[vp_key] = 0
@@ -381,8 +391,9 @@ func _ema_active() -> bool:
 
 func _create_history_texture() -> void:
 	#Two ping-pong RGBA16F frames, sampleable (reprojection reads the other
-	#slot at an offset UV). Live in the render_scene_buffers context: freed on
-	#clear_context (mode / frames / size change) and recreated here. Created
+	#slot at an offset UV), plus a matching r32f validation-depth pair for
+	#disocclusion revalidation. Live in the render_scene_buffers context: freed
+	#on clear_context (mode / frames / size change) and recreated here. Created
 	#per name so a context holding only one of the pair completes in place.
 	var format := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 	if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
@@ -395,6 +406,21 @@ func _create_history_texture() -> void:
 			context, HISTORY_WRITE_TEXTURE_NAME, format
 		)
 		history_write_uniform = get_image_uniform(history_write_image, HISTORY_WRITE_BINDING)
+	#Validation depth (r32f), ping-ponged in lockstep with the history: holds the
+	#depth of the surface each history estimate was accumulated for, so a
+	#disocclusion (depth delta beyond the threshold) is rejected instead of
+	#ghosted. One float per pixel per slot.
+	var depth_format := RenderingDevice.DATA_FORMAT_R32_SFLOAT
+	if not render_scene_buffers.has_texture(context, HISTORY_DEPTH_TEXTURE_NAME):
+		var history_depth_image : RID = create_simple_texture(
+			context, HISTORY_DEPTH_TEXTURE_NAME, depth_format
+		)
+		history_depth_uniform = get_image_uniform(history_depth_image, HISTORY_DEPTH_BINDING)
+	if not render_scene_buffers.has_texture(context, HISTORY_DEPTH_WRITE_TEXTURE_NAME):
+		var history_depth_write_image : RID = create_simple_texture(
+			context, HISTORY_DEPTH_WRITE_TEXTURE_NAME, depth_format
+		)
+		history_depth_write_uniform = get_image_uniform(history_depth_write_image, HISTORY_DEPTH_WRITE_BINDING)
 
 
 func _rebind_ema_uniforms(p_vp_key: int) -> void:
@@ -402,9 +428,13 @@ func _rebind_ema_uniforms(p_vp_key: int) -> void:
 	#(history_write), flipped after each mix dispatch.
 	var read_name : StringName = HISTORY_TEXTURE_NAME
 	var write_name : StringName = HISTORY_WRITE_TEXTURE_NAME
+	var read_depth_name : StringName = HISTORY_DEPTH_TEXTURE_NAME
+	var write_depth_name : StringName = HISTORY_DEPTH_WRITE_TEXTURE_NAME
 	if _ema_swap_by_vp.get(p_vp_key, 0) == 1:
 		read_name = HISTORY_WRITE_TEXTURE_NAME
 		write_name = HISTORY_TEXTURE_NAME
+		read_depth_name = HISTORY_DEPTH_WRITE_TEXTURE_NAME
+		write_depth_name = HISTORY_DEPTH_TEXTURE_NAME
 	history_image_uniform = get_image_uniform(
 		render_scene_buffers.get_texture_slice(context, read_name, 0, 0, 1, 1),
 		HISTORY_IMAGE_BINDING
@@ -412,6 +442,14 @@ func _rebind_ema_uniforms(p_vp_key: int) -> void:
 	history_write_uniform = get_image_uniform(
 		render_scene_buffers.get_texture_slice(context, write_name, 0, 0, 1, 1),
 		HISTORY_WRITE_BINDING
+	)
+	history_depth_uniform = get_image_uniform(
+		render_scene_buffers.get_texture_slice(context, read_depth_name, 0, 0, 1, 1),
+		HISTORY_DEPTH_BINDING
+	)
+	history_depth_write_uniform = get_image_uniform(
+		render_scene_buffers.get_texture_slice(context, write_depth_name, 0, 0, 1, 1),
+		HISTORY_DEPTH_WRITE_BINDING
 	)
 
 
@@ -522,6 +560,10 @@ func _report_vram_estimate() -> void:
 	var frames : int = settings.accumulation_frames if not _ema_active() else 1
 	var copies : int = 2 if _ema_active() or (_box_wanted() and settings.reprojection_enabled) else 1
 	var bytes : int = w * h * frames * settings.bytes_per_pixel() * copies
+	#EMA carries a matching r32f validation-depth pair (4 bytes/px per slot) for
+	#disocclusion revalidation.
+	if _ema_active():
+		bytes += w * h * frames * 4 * copies
 	var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
 	print("SSRT_CE: temporal history ≈ %.1f MB (%s, N=%d, %dx%d%s)" % [
 		bytes / 1048576.0,
@@ -633,19 +675,23 @@ func _render_view(p_view : int) -> void:
 	mix_uniforms.append(get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING))
 	
 	if _ema_active():
-		#EMA temporal accumulation: bind the history image (set 1, binding 2)
-		#and its ping-pong write partner (binding 3).
+		#EMA temporal accumulation: bind the history image (set 1, binding 2),
+		#its ping-pong write partner (binding 3), and the validation-depth pair
+		#(bindings 4/5) for disocclusion revalidation.
 		mix_uniforms.append(history_image_uniform)
 		mix_uniforms.append(history_write_uniform)
+		mix_uniforms.append(history_depth_uniform)
+		mix_uniforms.append(history_depth_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
-		#The mix_ema push constant extends the base 16-byte one with weight/valid
-		#/reprojection, to 28 bytes — must match the shader's declared size exactly
-		#(no padding).
+		#The mix_ema push constant extends the base 16-byte one with
+		#weight/valid/reprojection/depth-threshold, to 32 bytes — must match the
+		#shader's declared size exactly (no padding).
 		var ema_push : PackedFloat32Array = push_constant.duplicate()
 		ema_push.push_back(accumulation_weight)
 		ema_push.push_back(history_valid)
 		ema_push.push_back(_reprojection_enabled())
+		ema_push.push_back(settings.reproj_depth_threshold)
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms
