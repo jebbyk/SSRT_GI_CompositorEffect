@@ -35,6 +35,11 @@ layout(rgba8, set = 1, binding = 2) uniform image3D history;
 //textures are swapped after the pass. With reprojection off both bindings
 //carry the same single texture and only `history` is used.
 layout(rgba8, set = 1, binding = 3) uniform image3D history_write;
+//Per-slot validation depth for disocclusion revalidation (r32f, same N
+//slices), ping-ponged in lockstep with the history pair: holds the depth of
+//the surface each slot's capture was taken from.
+layout(r32f, set = 1, binding = 4) uniform image3D history_depth;
+layout(r32f, set = 1, binding = 5) uniform image3D history_depth_write;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -42,6 +47,7 @@ layout(push_constant, std430) uniform Params {
 	float slot_index;
 	float valid_count;
 	float reprojection_enabled;
+	float depth_threshold;
 } params;
 
 
@@ -99,23 +105,40 @@ void main() {
 			if(i == s) {
 				v = fresh;
 			} else {
+				//Disocclusion check: a slot whose surface's stored depth moved
+				//beyond the relative threshold is stale -> reset it to fresh.
+				bool slot_ok = false;
+				float stored_depth = 0.0;
 				if(rp_ok) {
-					v = imageLoad(history, ivec3(rpv, i));
-				} else {
-					v = fresh;
+					stored_depth = imageLoad(history_depth, ivec3(rpv, i)).r;
+					slot_ok = params.depth_threshold <= 0.0
+						|| abs(stored_depth - depth) <= params.depth_threshold * max(stored_depth, depth);
 				}
+				v = slot_ok ? imageLoad(history, ivec3(rpv, i)) : fresh;
 				imageStore(history_write, ivec3(uv, i), v);
+				//Shift the slot's depth with its capture; seed it on reset.
+				imageStore(history_depth_write, ivec3(uv, i), vec4(slot_ok ? stored_depth : depth));
 			}
 			sum += v;
 		}
 		imageStore(history_write, ivec3(uv, s), fresh);
+		imageStore(history_depth_write, ivec3(uv, s), vec4(depth));
 		acc = sum / float(sc);
 		acc.rgb *= 8.0; //decode the 1/8 UNORM RGB scale
 	} else {
 		imageStore(history, ivec3(uv, s), fresh);
+		imageStore(history_depth, ivec3(uv, s), vec4(depth));
 		vec4 sum = vec4(0.0);
 		for(int i = 0; i < sc; i++) {
-			sum += imageLoad(history, ivec3(uv, i));
+			if(i == s) {
+				sum += fresh;
+			} else {
+				//uv is always in bounds here (checked above), no rp_ok needed.
+				float stored_depth = imageLoad(history_depth, ivec3(uv, i)).r;
+				bool slot_ok = params.depth_threshold <= 0.0
+					|| abs(stored_depth - depth) <= params.depth_threshold * max(stored_depth, depth);
+				sum += slot_ok ? imageLoad(history, ivec3(uv, i)) : fresh;
+			}
 		}
 		acc = sum / float(sc);
 		acc.rgb *= 8.0; //decode the 1/8 UNORM RGB scale

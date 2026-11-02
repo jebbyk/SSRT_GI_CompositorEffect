@@ -152,8 +152,10 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 ## Temporal window in frames. EMA: weight = 1 - 0.05^(1/N), so the history
 ## keeps ~5% of its old value after N frames. BOX8 / BOX16F: exact flat average
 ## of the last N frames (history depth = N). 1 = accumulation off.
-@export_range(1, 256, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
 	set(value):
+		#Clamp so values saved under the old 256 cap still respect the max.
+		value = clampi(value, 1, 64)
 		if accumulation_frames == value:
 			return
 		accumulation_frames = value
@@ -171,11 +173,12 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Disocclusion revalidation (EMA): reject the stored history for a pixel when
-## its depth differs from the current pixel's depth by more than this relative
-## amount, so newly-exposed surfaces reset to the fresh estimate instead of
-## ghosting the old one for the accumulation window. 0 = disabled. Higher =
-## fewer false rejects (more ghosting); lower = tighter (more resets / shimmer).
+## Disocclusion revalidation (EMA and BOX): reject stored history whose
+## surface depth differs from the current pixel's depth by more than this
+## relative amount, so newly-exposed surfaces reset to the fresh estimate
+## instead of ghosting the old one for the accumulation window. 0 = disabled.
+## Higher = fewer false rejects (more ghosting); lower = tighter (more resets
+## / shimmer).
 @export_range(0.0, 0.5, 0.001) var reproj_depth_threshold: float = 0.05:
 	set(value):
 		if reproj_depth_threshold == value:

@@ -477,29 +477,21 @@ func _ensure_box_history() -> void:
 		_drop_box_history_entry(vp_key)
 
 	var count : int = 2 if settings.reprojection_enabled else 1
+	var color_format : RenderingDevice.DataFormat = \
+		RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM \
+		if settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8 \
+		else RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 	var textures : Array = []
+	var depth_textures : Array = []
 	for i in count:
-		var format := RDTextureFormat.new()
-		format.format = RenderingDevice.DATA_FORMAT_R8G8B8A8_UNORM \
-			if settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8 \
-			else RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
-		format.width = render_size.x
-		format.height = render_size.y
-		#The 3D extent comes from `depth` for TEXTURE_TYPE_3D (drivers force
-		#array_layers to 1 there); N slices live in the depth dimension.
-		format.depth = settings.accumulation_frames
-		format.array_layers = 1
-		format.mipmaps = 1
-		format.texture_type = RenderingDevice.TEXTURE_TYPE_3D
-		format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
-			| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
-
-		var view := RDTextureView.new()
-		var texture : RID = rd.texture_create(format, view, [])
-		if not texture.is_valid():
+		#Color history + its validation-depth twin (r32f), same N slices,
+		#ping-ponged in lockstep for disocclusion revalidation.
+		var texture : RID = _create_box_3d(color_format)
+		var depth_texture : RID = _create_box_3d(RenderingDevice.DATA_FORMAT_R32_SFLOAT)
+		if not texture.is_valid() or not depth_texture.is_valid():
 			#What was created so far stays tracked in _rids_to_free (predelete
 			#frees it); without an entry the mix pass falls back to plain mix.
-			push_error("from: SSRT_CE::_ensure_box_history(). msg: 3D history texture creation failed (%dx%dxN, N=%d, texture %d of %d)." % [
+			push_error("from: SSRT_CE::_ensure_box_history(). msg: 3D history texture creation failed (%dx%dxN, N=%d, pair %d of %d)." % [
 				render_size.x,
 				render_size.y,
 				settings.accumulation_frames,
@@ -507,23 +499,56 @@ func _ensure_box_history() -> void:
 			])
 			return
 		add_rid_to_free(texture, "box history texture")
+		add_rid_to_free(depth_texture, "box history depth texture")
 		textures.append(texture)
+		depth_textures.append(depth_texture)
 	while textures.size() < 2:
 		textures.append(RID())
-	_box_history_by_vp[vp_key] = {"textures": textures, "swap": 0, "tex_size": render_size}
+		depth_textures.append(RID())
+	_box_history_by_vp[vp_key] = {
+		"textures": textures,
+		"depth_textures": depth_textures,
+		"swap": 0,
+		"tex_size": render_size,
+	}
 	_rebind_box_uniforms(_box_history_by_vp[vp_key])
+
+
+func _create_box_3d(p_format: RenderingDevice.DataFormat) -> RID:
+	var format := RDTextureFormat.new()
+	format.format = p_format
+	format.width = render_size.x
+	format.height = render_size.y
+	#The 3D extent comes from `depth` for TEXTURE_TYPE_3D (drivers force
+	#array_layers to 1 there); N slices live in the depth dimension.
+	format.depth = settings.accumulation_frames
+	format.array_layers = 1
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_3D
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+	var view := RDTextureView.new()
+	return rd.texture_create(format, view, [])
 
 
 func _rebind_box_uniforms(p_entry: Variant) -> void:
 	var t0 : RID = p_entry.textures[0]
 	var t1 : RID = p_entry.textures[1]
+	var d0 : RID = p_entry.depth_textures[0]
+	var d1 : RID = p_entry.depth_textures[1]
 	var read : RID = t0
 	var write : RID = t0
+	var depth_read : RID = d0
+	var depth_write : RID = d0
 	if t1.is_valid():
 		read = t0 if p_entry.swap == 0 else t1
 		write = t1 if p_entry.swap == 0 else t0
+		depth_read = d0 if p_entry.swap == 0 else d1
+		depth_write = d1 if p_entry.swap == 0 else d0
 	history_image_uniform = get_image_uniform(read, HISTORY_IMAGE_BINDING)
 	history_write_uniform = get_image_uniform(write, HISTORY_WRITE_BINDING)
+	history_depth_uniform = get_image_uniform(depth_read, HISTORY_DEPTH_BINDING)
+	history_depth_write_uniform = get_image_uniform(depth_write, HISTORY_DEPTH_WRITE_BINDING)
 
 
 func _drop_box_history_entry(p_vp_key: int) -> void:
@@ -531,14 +556,15 @@ func _drop_box_history_entry(p_vp_key: int) -> void:
 	if entry == null:
 		return
 	_box_history_by_vp.erase(p_vp_key)
-	for texture in entry.textures:
-		if texture.is_valid():
-			#free_rid is render-thread-only, while settings/size changes and
-			#predelete arrive on the main thread; a skipped free leaks the
-			#texture and later allocations can fail. Erased from _rids_to_free
-			#first so predelete does not free it again.
-			_rids_to_free.erase(texture)
-			RenderingServer.call_on_render_thread(_free_box_history_rid.bind(texture))
+	for textures in [entry.textures, entry.depth_textures]:
+		for texture in textures:
+			if texture.is_valid():
+				#free_rid is render-thread-only, while settings/size changes and
+				#predelete arrive on the main thread; a skipped free leaks the
+				#texture and later allocations can fail. Erased from _rids_to_free
+				#first so predelete does not free it again.
+				_rids_to_free.erase(texture)
+				RenderingServer.call_on_render_thread(_free_box_history_rid.bind(texture))
 
 
 static func _free_box_history_rid(rid: RID) -> void:
@@ -560,9 +586,9 @@ func _report_vram_estimate() -> void:
 	var frames : int = settings.accumulation_frames if not _ema_active() else 1
 	var copies : int = 2 if _ema_active() or (_box_wanted() and settings.reprojection_enabled) else 1
 	var bytes : int = w * h * frames * settings.bytes_per_pixel() * copies
-	#EMA carries a matching r32f validation-depth pair (4 bytes/px per slot) for
-	#disocclusion revalidation.
-	if _ema_active():
+	#Both EMA and box carry a matching r32f validation-depth buffer (4 bytes/px
+	#per slot) for disocclusion revalidation.
+	if _ema_active() or _box_wanted():
 		bytes += w * h * frames * 4 * copies
 	var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
 	print("SSRT_CE: temporal history ≈ %.1f MB (%s, N=%d, %dx%d%s)" % [
@@ -717,19 +743,22 @@ func _render_view(p_view : int) -> void:
 		var box_pipeline : RID = mix_box8_pipeline if is_box8 else mix_box16f_pipeline
 		mix_uniforms.append(history_image_uniform)
 		mix_uniforms.append(history_write_uniform)
+		mix_uniforms.append(history_depth_uniform)
+		mix_uniforms.append(history_depth_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var frame : int = _box_frame_by_vp.get(vp_key, -1) + 1
 		var n : int = settings.accumulation_frames
 		box_slot_index = float(frame % n)
 		box_valid_count = float(mini(frame + 1, n))
 		_box_frame_by_vp[vp_key] = frame
-		#Like the EMA pass: extend the base 16-byte push constant to 28 bytes
-		#(slot + valid_count + reprojection), matching the shader's declared size
-		#exactly.
+		#Like the EMA pass: extend the base 16-byte push constant to 32 bytes
+		#(slot + valid_count + reprojection + depth threshold), matching the
+		#shader's declared size exactly.
 		var box_push : PackedFloat32Array = push_constant.duplicate()
 		box_push.push_back(box_slot_index)
 		box_push.push_back(box_valid_count)
 		box_push.push_back(_reprojection_enabled())
+		box_push.push_back(settings.reproj_depth_threshold)
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms
