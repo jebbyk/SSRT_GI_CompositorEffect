@@ -1,8 +1,7 @@
-//Albedo modulation for the mix passes, spliced in via #include.
-//The including shader must declare `ALBEDO_GI`, `params` (with raster_size and
-//albedo_size) and `albedo_texture` before the #include line.
-//Returns the scene's unlit albedo (from SSRTAlbedoSource) when available,
-//otherwise the already-lit fallback color (the legacy modulation).
+//Albedo modulation for the mix passes, spliced via #include. Includers must declare
+//ALBEDO_GI, params (raster_size/albedo_size) and albedo_texture before the #include.
+//Returns the scene's unlit albedo (SSRTAlbedoSource) when available, else the
+//already-lit fallback — so directly-lit surfaces are not overbrightened.
 vec3 get_albedo_modulation(ivec2 uv, vec3 fallback_color)
 {
 	if(ALBEDO_GI && params.albedo_size.x > 0.0 && params.albedo_size.y > 0.0) {

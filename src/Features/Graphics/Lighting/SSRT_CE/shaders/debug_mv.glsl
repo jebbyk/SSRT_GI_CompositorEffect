@@ -47,16 +47,14 @@ void main() {
 
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 
-	//Engine velocity buffer: screen-space delta in UV units (object + camera);
-	//(-1, -1) marks pixels the engine did not write.
+	//Engine velocity buffer: screen-space delta in UV units; (-1,-1) = engine left it unwritten.
 	vec2 mv_uv = texture(velocity_tex, uv_center).xy;
 	if(mv_uv != vec2(-1.0, -1.0)) {
 		imageStore(color_image, uv, velocity_color(mv_uv * vec2(size)));
 		return;
 	}
 
-	//Unwritten pixel: camera-only reprojection fallback (mv_uv is the sentinel
-	//here, so get_reprojected_px skips the velocity path).
+	//Unwritten pixel: camera-only fallback (the sentinel makes get_reprojected_px skip the velocity path).
 	float raw_depth = imageLoad(depth_image, uv).r;
 	vec2 prev_px;
 	bool in_bounds;

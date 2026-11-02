@@ -17,8 +17,7 @@ layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
-//Engine velocity buffer (needs_motion_vectors): per-object screen-space delta
-//in UV units, preferred by get_reprojected_px over the camera-only path.
+//Engine velocity buffer: per-object screen-space delta in UV units; preferred over the camera-only path.
 layout(set = 0, binding = 4) uniform sampler2D velocity_tex;
 
 // Set 1
@@ -27,14 +26,11 @@ layout(rgba16f, set = 1, binding = 0) uniform image2D in_image;
 layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
 //N-frame RGBA16F history (depth = N): full float, HDR RGB + AO, no encoding.
 layout(rgba16f, set = 1, binding = 2) uniform image3D history;
-//Ping-pong write partner of `history`, touched only when reprojection is on:
-//the pass shifts the slots into this frame's screen space there, then the two
-//textures are swapped after the pass. With reprojection off both bindings
-//carry the same single texture and only `history` is used.
+//Ping-pong write partner, used only with reprojection on (slots are shifted there,
+//textures swapped after the pass). Reprojection off: both bindings are the same texture.
 layout(rgba16f, set = 1, binding = 3) uniform image3D history_write;
-//Per-slot validation depth for disocclusion revalidation (r32f, same N
-//slices), ping-ponged in lockstep with the history pair: holds the depth of
-//the surface each slot's capture was taken from.
+//Per-slot validation depth (r32f, same N slices), ping-ponged in lockstep:
+//the surface depth each slot was captured from.
 layout(r32f, set = 1, binding = 4) uniform image3D history_depth;
 layout(r32f, set = 1, binding = 5) uniform image3D history_depth_write;
 
@@ -66,15 +62,10 @@ void main() {
 
 	vec4 GI = imageLoad(in_image, uv);
 
-	//Flat N-frame average over the rolling window (slot = frame % N). With
-	//reprojection the history is kept aligned: each frame every slot is shifted
-	//into the previous frame's screen space by the 1-frame MV (shifted copies
-	//go to history_write, the textures are swapped after the pass), so all
-	//slices are read at prev_px — exact for any camera motion, no velocity
-	//assumption. A pixel whose previous position is off-screen (newly exposed)
-	//has no valid shifted copies and resets its slots to the fresh capture.
-	//Without reprojection both bindings carry one texture and the slots are
-	//read/written at uv (the plain box average).
+	//Flat N-frame average over the rolling window (slot = frame % N).
+	//Reprojection on: each slot is shifted into the current frame's screen space
+	//(reads at prev_px, writes at uv), so all slices track the current point.
+	//Reprojection off: plain per-uv box average.
 	float raw_depth = imageLoad(depth_image, uv).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	vec2 p = vec2(uv) + 0.5;
@@ -102,8 +93,7 @@ void main() {
 			if(i == s) {
 				v = fresh;
 			} else {
-				//Disocclusion check: a slot whose surface's stored depth moved
-				//beyond the relative threshold is stale -> reset it to fresh.
+				//Disocclusion: slot's stored depth moved beyond the threshold -> stale, reset to fresh.
 				bool slot_ok = false;
 				float stored_depth = 0.0;
 				if(rp_ok) {
@@ -139,10 +129,6 @@ void main() {
 		acc = sum / float(sc);
 	}
 
-	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
-	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit
-	//surfaces are not overbrightened. Falls back to the legacy lit-color
-	//modulation when ALBEDO_GI is off or the albedo size is not available.
 	vec3 albedo = get_albedo_modulation(uv, color);
 
 	imageStore(color_image, uv, vec4(mix(color + albedo * acc.rgb, vec3(0), acc.a), 1.0));

@@ -46,10 +46,6 @@ void main() {
 
 	vec4 GI = imageLoad(in_image, uv);
 
-	//When enabled, modulate the GI bounce by the scene's unlit albedo (rendered
-	//by SSRTAlbedoSource) instead of the already-lit color, so directly-lit
-	//surfaces are not overbrightened. Falls back to the legacy lit-color
-	//modulation when ALBEDO_GI is off or the albedo size is not available.
 	vec3 albedo = get_albedo_modulation(uv, color);
 
 	imageStore(color_image, uv, vec4(mix(color + albedo * GI.rgb, vec3(0), GI.a), 1.0));

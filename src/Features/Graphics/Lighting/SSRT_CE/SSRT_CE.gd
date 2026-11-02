@@ -47,18 +47,15 @@ const ALBEDO_TEXTURE_BINDING := 1
 const HISTORY_IMAGE_BINDING := 2
 #Ping-pong write partner of the history texture (bound by both EMA and box passes).
 const HISTORY_WRITE_BINDING := 3
-#Validation depth for disocclusion revalidation (EMA only), ping-ponged with the history.
+#Validation depth for disocclusion revalidation, ping-ponged with the history.
 const HISTORY_DEPTH_BINDING := 4
 const HISTORY_DEPTH_WRITE_BINDING := 5
 
-#Mix pass: set 0 binding. Per-object velocity buffer for reprojection; the shader
-#prefers it over the camera-only path and falls back on the engine's (-1,-1)
-#sentinel (pixels it left unwritten, e.g. sky).
+#Per-object velocity buffer for reprojection; the shader falls back to the
+#camera-only path on the engine's (-1,-1) sentinel (pixels it left unwritten).
 const MIX_VELOCITY_BINDING := 4
 
-#Temporal history textures (EMA), created in the shared context, one RGBA16F
-#frame each, ping-ponged. The r32f depth buffers hold the validation depth for
-#disocclusion revalidation (mix_ema.glsl), ping-ponged in lockstep.
+#EMA history texture names: ping-pong pair + matching r32f validation-depth pair.
 const HISTORY_TEXTURE_NAME: StringName = &"SSRT_History"
 const HISTORY_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryWrite"
 const HISTORY_DEPTH_TEXTURE_NAME: StringName = &"SSRT_HistoryDepth"
@@ -122,49 +119,31 @@ var history_depth_uniform : RDUniform
 var history_depth_write_uniform : RDUniform
 var accumulation_weight : float = 1.0
 
-#Box-mode history, per viewport: {vp_key: {"textures": [RID, RID], "swap": int,
-#"tex_size": Vector2i}}. Manual RID 3D textures (depth = N, one slice per
-#accumulated frame); create_simple_texture is 2D-only. The effect runs on every
-#viewport sharing the world and their rasters may differ, so the history is
-#keyed per viewport (like the EMA history in the per-viewport
-#render_scene_buffers), never shared. With reprojection on there are two
-#ping-pong textures: the pass shifts the slots into the new frame's screen
-#space each frame and in-place would race across invocations, so the shifted
-#copies go to the partner texture which becomes the read texture next frame.
-#With reprojection off the second RID is invalid and "swap" stays 0.
+#Box history per viewport (viewports sharing the world may have different rasters):
+#{vp_key: {textures: [RID, RID], depth_textures: [RID, RID], swap: int, tex_size: Vector2i}}.
+#Manual 3D RIDs (depth = N slices) — create_simple_texture is 2D-only.
+#Reprojection on → two ping-pong textures (an in-place shift would race across invocations);
+#off → second RID invalid, swap stays 0.
 var _box_history_by_vp : Dictionary = {}
-#Per-viewport frame counter for the rolling box slot (slot = frame % N), keyed by
-#the RenderSceneBuffers instance id. First frame: valid_count = 1 -> itself only.
+#Rolling box frame counter per viewport (slot = frame % N; first frame averages itself only).
 var _box_frame_by_vp : Dictionary = {}
-#Last size _render_size_changed acted on, per viewport. The render_size property
-#is shared and flips between viewport sizes whenever several viewports run this
-#effect, which would retrigger the handler every frame without this dedupe.
+#Last size acted on, per viewport: the shared render_size flips between rasters and would retrigger the handler every frame.
 var _size_handled_by_vp : Dictionary = {}
 var box_slot_index : float = 0.0
 var box_valid_count : float = 1.0
 
-#Per-viewport flag that the EMA history has been written at least once, keyed by
-#the RenderSceneBuffers instance id (stable per viewport). First frame reads no
-#history so uninitialized memory never leaks into the result.
+#EMA history written at least once, per viewport: first frame must not read uninitialized memory.
 var _ema_valid_by_vp : Dictionary = {}
-#Per-viewport EMA ping-pong split (0: read SSRT_History, 1: read
-#SSRT_HistoryWrite); flipped after each mix dispatch.
+#EMA ping-pong split per viewport (0: read History, 1: read HistoryWrite); flipped after each dispatch.
 var _ema_swap_by_vp : Dictionary = {}
 
-#Prints once per settings/size change while a box mode falls back to the plain
-#mix pass because the 3D history texture could not be created.
+#Warn once while a box mode falls back to plain mix (no 3D history texture).
 var _box_mode_warned : bool = false
 
-#Prints once when a render callback lands on the albedo source SubViewport and
-#_render_setup skips it (see _is_albedo_source_viewport). Canary: confirms the
-#main viewport owns the shared ping-pong texture rather than the albedo one.
+#Warn once when _render_setup is skipped on the albedo source viewport.
 var _albedo_setup_skip_reported : bool = false
 
-#Memoized albedo-source detection, keyed by the same stable per-viewport
-#discriminator run_compute_shader() uses (RenderSceneBuffers instance ID). The
-#detection probes UniformSetCacheRD.get_cache(), which makes the engine print
-#the STORAGE_BIT error on the failing viewport — so the probe must run at most
-#once per viewport, not every frame.
+#Memoized albedo-source detection per viewport: the probe makes the engine print the STORAGE_BIT error, so it runs at most once.
 var _albedo_source_by_vp : Dictionary = {}
 
 #Albedo (unlit) source state, see albedo_handoff.gd
@@ -201,8 +180,7 @@ func _initialize_render() -> void:
 	
 #called every frame before executing code for each view
 func _render_setup() -> void:
-	#Build the pipelines first so the trace shader is valid for the albedo-source
-	#detection below (which tests the scene uniform set against the trace shader).
+	#Pipelines first: the albedo-source detection below tests the scene set against the trace shader.
 	if not settings_ubo.is_valid() or settings_dirty or shaders_dirty:
 		#print("from: SSRT_CE::_render_setup(). msg: Settings are dirty")
 		create_settings_uniform_buffer()
@@ -216,14 +194,9 @@ func _render_setup() -> void:
 		shaders_dirty = false
 		_report_vram_estimate()
 	
-	#The albedo source SubViewport shares this world (variant B), so the compositor
-	#invokes this effect there too. Its depth layer lacks TEXTURE_USAGE_STORAGE_BIT
-	#(no MSAA), so every pass is already skipped by run_compute_shader(). Running
-	#the rest of setup there would still create the SHARED ping-pong texture at the
-	#albedo viewport's smaller raster — clobbering the main viewport's full-res
-	#texture (the "top-left quarter" render in game mode) — and publish the smaller
-	#size to the handoff (a halving cascade). The main viewport owns the texture +
-	#handoff, so skip setup entirely on the albedo source.
+	#The albedo source viewport shares this world, so it also runs this effect. Skip
+	#setup there: it would publish its smaller raster to the handoff (the main viewport
+	#sizes the albedo target from it). Its passes are already skipped by run_compute_shader().
 	if _is_albedo_source_viewport():
 		if not _albedo_setup_skip_reported:
 			_albedo_setup_skip_reported = true
@@ -234,10 +207,8 @@ func _render_setup() -> void:
 			)
 		return
 	
-	#Publish this viewport's raster to the handoff so SSRTAlbedoSource can size
-	#its render target to the exact raster the mix pass samples (in the editor
-	#the host SubViewport's `size` property does not reflect the 3D panel's
-	#render size). Written render-thread / read main-thread, see albedo_handoff.gd.
+	#Publish this viewport's raster; SSRTAlbedoSource sizes its target from it.
+	#Written render-thread / read main-thread.
 	if albedo_handoff:
 		albedo_handoff.render_size = render_size
 	
@@ -260,9 +231,7 @@ func _render_setup() -> void:
 			#Fresh ping-pong pair: define the first read/write split.
 			_ema_swap_by_vp[vp_key] = 0
 		else:
-			#Rebind every frame: after a box->EMA switch the uniforms may still
-			#hold the (freed) box history RIDs, and the split flips after each
-			#mix dispatch.
+			#Rebind every frame: the split flips per dispatch, and a mode switch may leave freed RIDs in the uniforms.
 			_rebind_ema_uniforms(vp_key)
 	elif _box_wanted():
 		_ensure_box_history()
@@ -270,20 +239,15 @@ func _render_setup() -> void:
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
 
 
-#True when this render callback is running on the albedo source SubViewport (which
-#shares this world and therefore also runs this effect). Detected by the same
-#signal run_compute_shader() uses to skip its passes: the scene uniform set (which
-#binds the depth layer) fails to build when the depth layer lacks
-#TEXTURE_USAGE_STORAGE_BIT (no MSAA — true of the albedo source, not the main view).
+#True when this callback runs on the albedo source viewport. Same signal run_compute_shader()
+#uses to skip passes: the scene set fails to build when the depth layer lacks STORAGE_BIT (no MSAA).
 func _is_albedo_source_viewport() -> bool:
 	var vp_key : String = str(render_scene_buffers.get_instance_id()) if render_scene_buffers else "null_vp"
 	if _albedo_source_by_vp.has(vp_key):
 		return _albedo_source_by_vp[vp_key]
 	if not trace_shader.is_valid():
 		return false
-	#Probe once: the failing viewport's depth layer lacks STORAGE_BIT, so this
-	#get_cache() makes the engine print the usage-flag error. Memoize the result
-	#so it runs at most once per viewport, not every frame.
+	#A failing get_cache() makes the engine print the usage-flag error (hence the once-per-viewport memo above).
 	var scene_set := get_scene_uniform_set(0)
 	var is_albedo := not UniformSetCacheRD.get_cache(trace_shader, 0, scene_set).is_valid()
 	_albedo_source_by_vp[vp_key] = is_albedo
@@ -390,11 +354,7 @@ func _ema_active() -> bool:
 
 
 func _create_history_texture() -> void:
-	#Two ping-pong RGBA16F frames, sampleable (reprojection reads the other
-	#slot at an offset UV), plus a matching r32f validation-depth pair for
-	#disocclusion revalidation. Live in the render_scene_buffers context: freed
-	#on clear_context (mode / frames / size change) and recreated here. Created
-	#per name so a context holding only one of the pair completes in place.
+	#EMA ping-pong pair + r32f validation-depth pair, in the shared context (freed by clear_context on size change).
 	var format := RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
 	if not render_scene_buffers.has_texture(context, HISTORY_TEXTURE_NAME):
 		var history_image : RID = create_simple_texture(
@@ -406,10 +366,7 @@ func _create_history_texture() -> void:
 			context, HISTORY_WRITE_TEXTURE_NAME, format
 		)
 		history_write_uniform = get_image_uniform(history_write_image, HISTORY_WRITE_BINDING)
-	#Validation depth (r32f), ping-ponged in lockstep with the history: holds the
-	#depth of the surface each history estimate was accumulated for, so a
-	#disocclusion (depth delta beyond the threshold) is rejected instead of
-	#ghosted. One float per pixel per slot.
+	#r32f validation depth, ping-ponged in lockstep: the surface depth each estimate was accumulated for.
 	var depth_format := RenderingDevice.DATA_FORMAT_R32_SFLOAT
 	if not render_scene_buffers.has_texture(context, HISTORY_DEPTH_TEXTURE_NAME):
 		var history_depth_image : RID = create_simple_texture(
@@ -424,8 +381,7 @@ func _create_history_texture() -> void:
 
 
 func _rebind_ema_uniforms(p_vp_key: int) -> void:
-	#Ping-pong split: one texture is read (history), the other written
-	#(history_write), flipped after each mix dispatch.
+	#Ping-pong split: one texture read, the other written; flipped after each dispatch.
 	var read_name : StringName = HISTORY_TEXTURE_NAME
 	var write_name : StringName = HISTORY_WRITE_TEXTURE_NAME
 	var read_depth_name : StringName = HISTORY_DEPTH_TEXTURE_NAME
@@ -463,9 +419,8 @@ func _reprojection_enabled() -> float:
 
 
 func _ensure_box_history() -> void:
-	#This viewport's N-frame 3D history (depth = N), rolling slot = frame % N.
-	#Deferred until the viewport has a real raster; a failed create leaves no
-	#entry and the mix pass falls back to the plain mix pass.
+	#This viewport's N-frame 3D history (rolling slot = frame % N).
+	#A failed create leaves no entry → the mix pass falls back to plain mix.
 	if render_size.x <= 0 or render_size.y <= 0:
 		return
 	var vp_key : int = render_scene_buffers.get_instance_id()
@@ -484,13 +439,11 @@ func _ensure_box_history() -> void:
 	var textures : Array = []
 	var depth_textures : Array = []
 	for i in count:
-		#Color history + its validation-depth twin (r32f), same N slices,
-		#ping-ponged in lockstep for disocclusion revalidation.
+		#Color history + its r32f validation-depth twin, same N slices, ping-ponged in lockstep.
 		var texture : RID = _create_box_3d(color_format)
 		var depth_texture : RID = _create_box_3d(RenderingDevice.DATA_FORMAT_R32_SFLOAT)
 		if not texture.is_valid() or not depth_texture.is_valid():
-			#What was created so far stays tracked in _rids_to_free (predelete
-			#frees it); without an entry the mix pass falls back to plain mix.
+			#Partially-created RIDs stay in _rids_to_free (predelete frees them); no entry → plain-mix fallback.
 			push_error("from: SSRT_CE::_ensure_box_history(). msg: 3D history texture creation failed (%dx%dxN, N=%d, pair %d of %d)." % [
 				render_size.x,
 				render_size.y,
@@ -519,8 +472,7 @@ func _create_box_3d(p_format: RenderingDevice.DataFormat) -> RID:
 	format.format = p_format
 	format.width = render_size.x
 	format.height = render_size.y
-	#The 3D extent comes from `depth` for TEXTURE_TYPE_3D (drivers force
-	#array_layers to 1 there); N slices live in the depth dimension.
+	#TEXTURE_TYPE_3D extent is `depth` (drivers force array_layers to 1); N slices live there.
 	format.depth = settings.accumulation_frames
 	format.array_layers = 1
 	format.mipmaps = 1
@@ -559,10 +511,8 @@ func _drop_box_history_entry(p_vp_key: int) -> void:
 	for textures in [entry.textures, entry.depth_textures]:
 		for texture in textures:
 			if texture.is_valid():
-				#free_rid is render-thread-only, while settings/size changes and
-				#predelete arrive on the main thread; a skipped free leaks the
-				#texture and later allocations can fail. Erased from _rids_to_free
-				#first so predelete does not free it again.
+				#free_rid is render-thread-only, but settings/size changes and predelete arrive on the main
+				#thread — free there, erased from _rids_to_free first so predelete doesn't double-free.
 				_rids_to_free.erase(texture)
 				RenderingServer.call_on_render_thread(_free_box_history_rid.bind(texture))
 
@@ -579,15 +529,13 @@ func _free_box_history() -> void:
 
 
 func _report_vram_estimate() -> void:
-	#Informational: history footprint so a large mode/frame-count choice is a
-	#conscious decision, not an OOM surprise. EMA keeps one ping-pong pair.
+	#Informational VRAM footprint of the history buffers.
 	var w : int = render_size.x
 	var h : int = render_size.y
 	var frames : int = settings.accumulation_frames if not _ema_active() else 1
 	var copies : int = 2 if _ema_active() or (_box_wanted() and settings.reprojection_enabled) else 1
 	var bytes : int = w * h * frames * settings.bytes_per_pixel() * copies
-	#Both EMA and box carry a matching r32f validation-depth buffer (4 bytes/px
-	#per slot) for disocclusion revalidation.
+	#Both modes carry the r32f validation-depth buffer (4 bytes/px per slot).
 	if _ema_active() or _box_wanted():
 		bytes += w * h * frames * 4 * copies
 	var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
@@ -605,9 +553,8 @@ func _render_view(p_view : int) -> void:
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
 	
-	#Per-object velocity buffer (set 0, MIX_VELOCITY_BINDING) for the mix
-	#passes' reprojection. Fetched once per view like the debug MV pass; the
-	#defensive mix.glsl pass keeps the plain set (it declares no velocity).
+	#Per-object velocity buffer for the mix passes' reprojection. The defensive mix.glsl pass
+	#keeps the plain set (declares no velocity).
 	var velocity_image : RID = render_scene_buffers.get_velocity_texture()
 	var velocity_bind : RID = velocity_image
 	if not velocity_bind.is_valid():
@@ -615,10 +562,7 @@ func _render_view(p_view : int) -> void:
 	var mix_scene_set : Array[RDUniform] = scene_uniform_set.duplicate()
 	mix_scene_set.append(get_sampler_uniform(velocity_bind, nearest_sampler, MIX_VELOCITY_BINDING))
 	
-	#Debug overlay replaces the effect output; trace/blur/mix would be unused.
-	#Reuses the velocity buffer fetched above (same RID; only the binding number
-	#differs). The shader falls back to camera-only reprojection for pixels it
-	#did not write.
+	#Debug overlay replaces the effect output; trace/blur/mix are unused. Reuses the velocity buffer above.
 	if settings.debug_view == SSRTSettings.DebugView.MOTION_VECTORS:
 		var debug_mv_set : Array[RDUniform] = [
 			get_scene_data_ubo(),
@@ -701,18 +645,14 @@ func _render_view(p_view : int) -> void:
 	mix_uniforms.append(get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING))
 	
 	if _ema_active():
-		#EMA temporal accumulation: bind the history image (set 1, binding 2),
-		#its ping-pong write partner (binding 3), and the validation-depth pair
-		#(bindings 4/5) for disocclusion revalidation.
+		#Bind history (b2), its ping-pong partner (b3) and the validation-depth pair (b4/b5).
 		mix_uniforms.append(history_image_uniform)
 		mix_uniforms.append(history_write_uniform)
 		mix_uniforms.append(history_depth_uniform)
 		mix_uniforms.append(history_depth_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
-		#The mix_ema push constant extends the base 16-byte one with
-		#weight/valid/reprojection/depth-threshold, to 32 bytes — must match the
-		#shader's declared size exactly (no padding).
+		#Extend the base 16-byte push constant to 32 (weight/valid/reproj/depth-threshold) — must match the shader exactly.
 		var ema_push : PackedFloat32Array = push_constant.duplicate()
 		ema_push.push_back(accumulation_weight)
 		ema_push.push_back(history_valid)
@@ -729,15 +669,11 @@ func _render_view(p_view : int) -> void:
 			uniform_sets,
 			ema_push,
 		)
-		#The albedo SubViewport auto-skips this pass, so flagging it valid and
-		#flipping the split are harmless there: it never touches the history.
+		#The albedo viewport auto-skips this pass — flagging/flipping there is harmless.
 		_ema_valid_by_vp[vp_key] = true
 		_ema_swap_by_vp[vp_key] = 1 - _ema_swap_by_vp.get(vp_key, 0)
 	elif _box_wanted() and _box_history_by_vp.has(render_scene_buffers.get_instance_id()):
-		#Flat N-frame average: the shader writes the current frame to the rolling
-		#slot and averages the last min(frame+1, N) slots. The albedo SubViewport
-		#auto-skips this pass, so advancing its counter is harmless (it never
-		#writes the shared history).
+		#Flat N-frame average: current frame → rolling slot, average of the last min(frame+1, N) slots.
 		var is_box8 : bool = settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8
 		var box_shader : RID = mix_box8_shader if is_box8 else mix_box16f_shader
 		var box_pipeline : RID = mix_box8_pipeline if is_box8 else mix_box16f_pipeline
@@ -751,9 +687,7 @@ func _render_view(p_view : int) -> void:
 		box_slot_index = float(frame % n)
 		box_valid_count = float(mini(frame + 1, n))
 		_box_frame_by_vp[vp_key] = frame
-		#Like the EMA pass: extend the base 16-byte push constant to 32 bytes
-		#(slot + valid_count + reprojection + depth threshold), matching the
-		#shader's declared size exactly.
+		#Extend the base 16-byte push constant to 32 (slot/count/reproj/depth-threshold) — must match the shader exactly.
 		var box_push : PackedFloat32Array = push_constant.duplicate()
 		box_push.push_back(box_slot_index)
 		box_push.push_back(box_valid_count)
@@ -770,15 +704,12 @@ func _render_view(p_view : int) -> void:
 			uniform_sets,
 			box_push,
 		)
-		#Advance the ping-pong swap. Harmless on a viewport whose pass is
-		#memoized-skipped (the albedo SubViewport): its textures are then never
-		#read or written, so the index is meaningless there.
+		#Advance the ping-pong swap (meaningless on a viewport whose pass is skipped).
 		var entry : Variant = _box_history_by_vp.get(vp_key)
 		if entry.textures[1].is_valid():
 			entry.swap = 1 - entry.swap
 	else:
-		#Defensive: a box mode without a valid 3D history texture composites the
-		#per-frame estimate.
+		#Box mode without a 3D history: composite the per-frame estimate.
 		if not _box_mode_warned:
 			var mode_name : String = SSRTSettings.AccumulationMode.keys()[settings.accumulation_mode]
 			push_warning("from: SSRT_CE::_render_view(). msg: Temporal accumulation is unavailable in mode %s (no 3D history texture), using no temporal accumulation." % mode_name)
@@ -799,15 +730,12 @@ func _render_view(p_view : int) -> void:
 func _render_size_changed() -> void:
 	#print("from: SSRT_CE::_render_size_changed()")
 	var vp_key : int = render_scene_buffers.get_instance_id()
-	#The shared render_size property flips between viewport sizes on every
-	#viewport callback; act only when this viewport's size really changed.
+	#The shared render_size flips between viewport rasters; act only on this viewport's real change.
 	if _size_handled_by_vp.get(vp_key) == render_size:
 		return
 	_size_handled_by_vp[vp_key] = render_size
 	render_scene_buffers.clear_context(context)
-	#clear_context frees this viewport's EMA history; drop its box history and
-	#rolling counter so the recreated history is not read before its first
-	#frame writes it. Other viewports keep accumulating.
+	#Drop this viewport's box history + counter so the recreated history isn't read before its first write.
 	_ema_valid_by_vp.erase(vp_key)
 	_ema_swap_by_vp.erase(vp_key)
 	_box_frame_by_vp.erase(vp_key)
@@ -818,12 +746,9 @@ func _render_size_changed() -> void:
 	
 func _settings_changed() -> void:
 	#print("from: SSRT_CE::_settings_changed()")
-	#Runs on the main thread (inspector): touch no RIDs directly.
-	#Deliberately no clear_context here: the context textures are size-bound,
-	#and a main-thread clear both fails to free them (render-thread-only) and
-	#leaks them. Stale EMA/box contents are made harmless by the per-viewport
-	#validity flags reset below; size changes clear via _render_size_changed
-	#(render thread, where frees work).
+	#Main thread (inspector): no direct RID touches, no clear_context (render-thread-only; a
+	#main-thread clear would leak). Stale contents are harmless via the validity flags reset
+	#below; size changes clear via _render_size_changed.
 	_ema_valid_by_vp.clear()
 	_ema_swap_by_vp.clear()
 	_box_frame_by_vp.clear()
@@ -834,8 +759,7 @@ func _settings_changed() -> void:
 
 func _notification(what):
 	if what == NOTIFICATION_PREDELETE:
-		#The deferred frees are static RID-only callables, safe after self is
-		#gone; the base predelete then frees the rest of _rids_to_free.
+		#Deferred frees are static RID-only callables, safe after self is gone.
 		_free_box_history()
 	super._notification(what)
 

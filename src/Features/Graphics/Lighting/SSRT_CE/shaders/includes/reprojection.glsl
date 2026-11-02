@@ -1,21 +1,14 @@
-//Screen-space reprojection: per-object velocity if the engine wrote one for the
-//pixel, else the scene UBO's current/prev camera matrices (camera-only path).
-//The matrices are passed individually because a block struct type (declared via
-//"layout(...) uniform BlockName { ... } var;") cannot be used as a function
-//parameter type in Godot's Vulkan GLSL mode.
-//
-//prev_data is zero-filled unless motion vectors are being calculated
-//(CompositorEffect.needs_motion_vectors), so a zero prev projection means "no
-//reprojection". Returns the previous-frame screen position in pixels
-//(top-left origin, texel centers) and whether it was inside the viewport.
-//
-//The UBO stores the view/inv_view matrices as a TRANSPOSED mat3x4
-//(store_transform_transposed_3x4), and this GLSL rejects mat3x4 * vec4, so the
-//real mat4 is rebuilt exactly the way the engine's scene shaders do it.
-//
-//Uses the engine's uv*2-1 convention (see derive_motion_vector): the UBO
-//projections are y-corrected for that space (set_depth_correction), so a raw
-//screen uv maps straight through, and the raw depth is already Vulkan NDC z.
+//Screen-space reprojection: per-object velocity if the engine wrote one, else the
+//scene UBO's current/prev cameras (camera-only path).
+//Matrices are passed individually: a block struct type can't be a function
+//parameter in Godot's Vulkan GLSL mode.
+//The UBO stores view/inv_view as a TRANSPOSED mat3x4 (and GLSL rejects mat3x4*vec4),
+//so the real mat4 is rebuilt the way the engine's scene shaders do it.
+//prev_data is zero-filled unless needs_motion_vectors — a zero prev projection means
+//no reprojection. Returns the previous-frame position in texel centers (top-left
+//origin) + in-bounds flag.
+//Uses the engine's uv*2-1 convention: UBO projections are y-corrected for it
+//(set_depth_correction), raw depth is already Vulkan NDC z.
 void get_reprojected_px(
 	vec2 velocity_uv,
 	mat4 cur_inv_projection, mat3x4 cur_inv_view,
@@ -23,10 +16,8 @@ void get_reprojected_px(
 	vec2 uv_center, float raw_depth, ivec2 size,
 	out vec2 prev_px, out bool in_bounds)
 {
-	//Per-object velocity preferred: the engine buffer holds the full screen-space
-	//delta (camera + object motion) in UV units, so prev = cur + v is exact for
-	//both. The (-1,-1) sentinel marks pixels the engine left unwritten (sky);
-	//those fall through to the camera-only path below.
+	//Velocity buffer holds the full screen-space delta (camera + object) in UV units:
+	//prev = cur + v is exact. (-1,-1) = engine left it unwritten (sky) -> camera-only path.
 	if(velocity_uv != vec2(-1.0, -1.0)) {
 		prev_px = (uv_center + velocity_uv) * vec2(size);
 		in_bounds = prev_px.x >= 0.5 && prev_px.y >= 0.5
@@ -39,8 +30,7 @@ void get_reprojected_px(
 		return;
 	}
 
-	//m[i] is a vec4 column (mat3x4 = 3 cols x 4 rows); columns become the mat4
-	//columns, then transpose undoes the transposed storage.
+	//mat3x4 = 3 vec4 columns; rebuild the mat4, and transpose undoes the transposed storage.
 	mat4 inv_view = transpose(mat4(cur_inv_view[0], cur_inv_view[1], cur_inv_view[2], vec4(0.0, 0.0, 0.0, 1.0)));
 	mat4 view = transpose(mat4(prev_view[0], prev_view[1], prev_view[2], vec4(0.0, 0.0, 0.0, 1.0)));
 

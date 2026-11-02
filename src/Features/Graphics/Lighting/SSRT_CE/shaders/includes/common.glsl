@@ -1,6 +1,5 @@
-//Shared helper for the SSRT compute shaders, spliced in via #include.
-//The including shader must declare `scene` (SceneDataBlock) and `depth_image`
-//before the #include line.
+//Shared helper, spliced via #include. The includer must declare `scene` and
+//`depth_image` before the #include.
 float get_linear_depth(ivec2 uv)
 {
 	float depth = imageLoad(depth_image, uv).r;

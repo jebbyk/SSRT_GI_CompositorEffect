@@ -135,12 +135,9 @@ signal s_changed
 @export_category("Temporal settings")
 enum AccumulationMode { EMA, BOX8, BOX16F }
 
-## Temporal accumulation mode. EMA: exponential, one frame of history, window
-## of ~N frames (mean lag (N-1)/2). BOX8: exact flat average of the last N
-## frames in RGBA8 (RGB stored * 1/8, ~0.031 precision, values above 8 clip,
-## cheapest VRAM). BOX16F: the same exact N-frame average at full RGBA16F
-## precision (most VRAM). (Plain @export takes no tooltip argument in Godot
-## 4.7, so this note is doc-only, not an inspector tooltip.)
+## Accumulation mode. EMA: exponential, ~N-frame window. BOX8: exact flat N-frame
+## average in RGBA8 (RGB stored *1/8, clips above 8, cheapest VRAM). BOX16F: the same,
+## full RGBA16F precision (most VRAM).
 @export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
 	set(value):
 		if accumulation_mode == value:
@@ -149,12 +146,11 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Temporal window in frames. EMA: weight = 1 - 0.05^(1/N), so the history
-## keeps ~5% of its old value after N frames. BOX8 / BOX16F: exact flat average
-## of the last N frames (history depth = N). 1 = accumulation off.
+## Temporal window (frames). EMA: weight = 1 - 0.05^(1/N) (~5% of the old value remains after N frames).
+## BOX: exact flat average of the last N frames. 1 = off.
 @export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
 	set(value):
-		#Clamp so values saved under the old 256 cap still respect the max.
+		#Clamp to the current max (saved values may predate it).
 		value = clampi(value, 1, 64)
 		if accumulation_frames == value:
 			return
@@ -162,9 +158,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Reproject the history read to the pixel's previous-frame position (derived
-## from depth + the scene UBO's prev-frame camera). Off = history is read at
-## the same pixel, which ghosts whenever the camera moves.
+## Reproject the history read to the pixel's previous-frame position. Off = read at the same pixel (ghosts under camera motion).
 @export var reprojection_enabled: bool = true:
 	set(value):
 		if reprojection_enabled == value:
@@ -173,12 +167,9 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Disocclusion revalidation (EMA and BOX): reject stored history whose
-## surface depth differs from the current pixel's depth by more than this
-## relative amount, so newly-exposed surfaces reset to the fresh estimate
-## instead of ghosting the old one for the accumulation window. 0 = disabled.
-## Higher = fewer false rejects (more ghosting); lower = tighter (more resets
-## / shimmer).
+## Disocclusion revalidation: reject stored history whose surface depth differs from the
+## current depth by more than this relative amount. 0 = disabled. Higher = more ghosting,
+## lower = more resets/shimmer.
 @export_range(0.0, 0.5, 0.001) var reproj_depth_threshold: float = 0.05:
 	set(value):
 		if reproj_depth_threshold == value:
@@ -190,10 +181,8 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 @export_category("Debug")
 enum DebugView { NONE, MOTION_VECTORS }
 
-## Replaces the effect output with a debug overlay. MOTION_VECTORS draws the
-## per-pixel motion derived from depth + the prev-frame camera: black = static,
-## tinted = motion (R = x, G = y, 64 px = full range), red = previous position
-## off-screen. Skips the trace/blur/mix passes.
+## Debug overlay replacing the effect output. MOTION_VECTORS: black = static, R/G = x/y motion
+## (64 px = full range), red = previous position off-screen. Skips trace/blur/mix.
 @export var debug_view: DebugView = DebugView.NONE:
 	set(value):
 		if debug_view == value:
@@ -202,8 +191,7 @@ enum DebugView { NONE, MOTION_VECTORS }
 		s_changed.emit()
 
 
-## Bytes per pixel of the temporal history, for the VRAM estimate readout.
-## BOX8 stores 4 bytes/px (RGBA8); EMA and BOX16F store 8 bytes/px (RGBA16F).
+## History bytes/pixel for the VRAM estimate: BOX8 = 4 (RGBA8), EMA/BOX16F = 8 (RGBA16F).
 func bytes_per_pixel() -> int:
 	if accumulation_mode == AccumulationMode.BOX8:
 		return 4
