@@ -104,8 +104,9 @@ void main() {
 				}
 				v = slot_ok ? imageLoad(history, ivec3(rpv, i)) : fresh;
 				imageStore(history_write, ivec3(uv, i), v);
-				//Shift the slot's depth with its capture; seed it on reset.
-				imageStore(history_depth_write, ivec3(uv, i), vec4(slot_ok ? stored_depth : depth));
+				//Re-seed the depth fingerprint to the current frame each pass: the check then compares
+				//1-frame-apart depths (not i-frame-apart), so old slots are not false-rejected by camera motion.
+				imageStore(history_depth_write, ivec3(uv, i), vec4(depth));
 			}
 			sum += v;
 		}
