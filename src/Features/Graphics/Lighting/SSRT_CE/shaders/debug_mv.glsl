@@ -58,11 +58,12 @@ void main() {
 	float raw_depth = imageLoad(depth_image, uv).r;
 	vec2 prev_px;
 	bool in_bounds;
+	float d_exp;
 	get_reprojected_px(
 		mv_uv,
 		scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
 		scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
-		uv_center, raw_depth, size, prev_px, in_bounds);
+		uv_center, raw_depth, size, prev_px, in_bounds, d_exp);
 
 	if(in_bounds) {
 		imageStore(color_image, uv, velocity_color((vec2(uv) + 0.5) - prev_px));

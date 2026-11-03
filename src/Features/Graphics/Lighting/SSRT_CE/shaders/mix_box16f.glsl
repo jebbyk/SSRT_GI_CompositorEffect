@@ -71,13 +71,14 @@ void main() {
 	vec2 p = vec2(uv) + 0.5;
 	vec2 prev_px = p;
 	bool reproj = params.reprojection_enabled > 0.5;
+	float d_exp = depth;
 	if(reproj) {
 		bool in_bounds;
 		get_reprojected_px(
 			texture(velocity_tex, uv_center).xy,
 			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
 			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
-			uv_center, raw_depth, size, prev_px, in_bounds);
+			uv_center, raw_depth, size, prev_px, in_bounds, d_exp);
 	}
 	vec4 fresh = GI;
 	int sc = int(params.valid_count);
@@ -93,15 +94,21 @@ void main() {
 			if(i == s) {
 				v = fresh;
 			} else {
-				//Disocclusion: slot's stored depth moved beyond the threshold -> stale, reset to fresh.
-				bool slot_ok = false;
-				float stored_depth = 0.0;
+				//Soft rejection: past the motion-compensated tolerance, blend the slot toward fresh in
+				//proportion to the excess (full fresh at 2x tolerance). depth_threshold <= 0 disables.
+				float w_stale = 1.0;
 				if(rp_ok) {
-					stored_depth = imageLoad(history_depth, ivec3(rpv, i)).r;
-					slot_ok = params.depth_threshold <= 0.0
-						|| abs(stored_depth - depth) <= params.depth_threshold * max(stored_depth, depth);
+					w_stale = 0.0;
+					float stored_depth = imageLoad(history_depth, ivec3(rpv, i)).r;
+					if(params.depth_threshold > 0.0) {
+						float delta = abs(stored_depth - depth);
+						float tol = params.depth_threshold * max(stored_depth, depth) + abs(d_exp - depth);
+						if(delta > tol) {
+							w_stale = min((delta - tol) / tol, 1.0);
+						}
+					}
 				}
-				v = slot_ok ? imageLoad(history, ivec3(rpv, i)) : fresh;
+				v = w_stale >= 1.0 ? fresh : mix(imageLoad(history, ivec3(rpv, i)), fresh, w_stale);
 				imageStore(history_write, ivec3(uv, i), v);
 				//Re-seed the depth fingerprint to the current frame each pass: the check then compares
 				//1-frame-apart depths (not i-frame-apart), so old slots are not false-rejected by camera motion.

@@ -69,6 +69,7 @@ void main() {
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	ivec2 read_uv = uv;
 	float history_valid = params.history_valid;
+	float d_exp = depth;
 	if(params.reprojection_enabled > 0.5) {
 		vec2 prev_px;
 		bool in_bounds;
@@ -76,7 +77,7 @@ void main() {
 			texture(velocity_tex, uv_center).xy,
 			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
 			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
-			uv_center, raw_depth, size, prev_px, in_bounds);
+			uv_center, raw_depth, size, prev_px, in_bounds, d_exp);
 		if(in_bounds) {
 			read_uv = ivec2(prev_px);
 		} else {
@@ -87,12 +88,18 @@ void main() {
 	vec4 acc = GI;
 	if(history_valid > 0.5) {
 		vec4 hist = imageLoad(history, read_uv);
-		//Revalidation: stored estimate accumulated for a different surface (disocclusion)
-		//-> use the fresh GI. depth_threshold <= 0 disables.
+		//Soft rejection: past the motion-compensated tolerance, blend toward fresh in proportion to
+		//the excess (full fresh at 2x tolerance) instead of a hard reset. depth_threshold <= 0 disables.
+		float w = params.accumulation_weight;
 		float stored_depth = imageLoad(history_depth, read_uv).r;
-		bool depth_ok = params.depth_threshold <= 0.0
-			|| abs(stored_depth - depth) <= params.depth_threshold * max(stored_depth, depth);
-		acc = depth_ok ? mix(hist, GI, params.accumulation_weight) : GI;
+		if(params.depth_threshold > 0.0) {
+			float delta = abs(stored_depth - depth);
+			float tol = params.depth_threshold * max(stored_depth, depth) + abs(d_exp - depth);
+			if(delta > tol) {
+				w = max(w, min((delta - tol) / tol, 1.0));
+			}
+		}
+		acc = mix(hist, GI, w);
 	}
 	imageStore(history_write, uv, acc);
 	//Store this surface's depth for next frame's revalidation (unconditional: the estimate converges to the current surface).
