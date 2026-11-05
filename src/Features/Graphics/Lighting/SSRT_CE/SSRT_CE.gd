@@ -652,12 +652,13 @@ func _render_view(p_view : int) -> void:
 		mix_uniforms.append(history_depth_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
-		#Extend the base 16-byte push constant to 32 (weight/valid/reproj/depth-threshold) — must match the shader exactly.
+		#Extend the base 16-byte push constant to 36 (weight/valid/reproj/depth-threshold/bilinear) — must match the shader exactly.
 		var ema_push : PackedFloat32Array = push_constant.duplicate()
 		ema_push.push_back(accumulation_weight)
 		ema_push.push_back(history_valid)
 		ema_push.push_back(_reprojection_enabled())
 		ema_push.push_back(settings.reproj_depth_threshold)
+		ema_push.push_back(1.0 if settings.bilinear_reprojection else 0.0)
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms
@@ -687,12 +688,13 @@ func _render_view(p_view : int) -> void:
 		box_slot_index = float(frame % n)
 		box_valid_count = float(mini(frame + 1, n))
 		_box_frame_by_vp[vp_key] = frame
-		#Extend the base 16-byte push constant to 32 (slot/count/reproj/depth-threshold) — must match the shader exactly.
+		#Extend the base 16-byte push constant to 36 (slot/count/reproj/depth-threshold/bilinear) — must match the shader exactly.
 		var box_push : PackedFloat32Array = push_constant.duplicate()
 		box_push.push_back(box_slot_index)
 		box_push.push_back(box_valid_count)
 		box_push.push_back(_reprojection_enabled())
 		box_push.push_back(settings.reproj_depth_threshold)
+		box_push.push_back(1.0 if settings.bilinear_reprojection else 0.0)
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms

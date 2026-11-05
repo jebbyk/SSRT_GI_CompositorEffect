@@ -39,6 +39,7 @@ layout(push_constant, std430) uniform Params {
 	float history_valid;
 	float reprojection_enabled;
 	float depth_threshold;
+	float bilinear_reprojection;
 } params;
 
 
@@ -67,31 +68,47 @@ void main() {
 	//(a barrier can't span invocations).
 	float raw_depth = imageLoad(depth_image, uv).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
-	ivec2 read_uv = uv;
+	vec2 prev_px = vec2(uv) + 0.5;
 	float history_valid = params.history_valid;
 	float d_exp = depth;
 	if(params.reprojection_enabled > 0.5) {
-		vec2 prev_px;
 		bool in_bounds;
 		get_reprojected_px(
 			texture(velocity_tex, uv_center).xy,
 			scene.data.inv_projection_matrix, scene.data.inv_view_matrix,
 			scene.prev_data.projection_matrix, scene.prev_data.view_matrix,
 			uv_center, raw_depth, size, prev_px, in_bounds, d_exp);
-		if(in_bounds) {
-			read_uv = ivec2(prev_px);
-		} else {
+		if(!in_bounds) {
 			//Previous position off-screen: no valid history for this pixel.
 			history_valid = 0.0;
 		}
 	}
 	vec4 acc = GI;
 	if(history_valid > 0.5) {
-		vec4 hist = imageLoad(history, read_uv);
+		//Bilinear: 4 taps at the fractional prev_px (texel-center space); the clamp keeps the +1 taps
+		//in bounds. Nearest (toggle off) would quantize sub-texel motion to 0/1-texel jumps.
+		vec2 q = prev_px - 0.5;
+		ivec2 b = clamp(ivec2(floor(q)), ivec2(0), size - 2);
+		vec2 f = q - vec2(b);
+		vec4 hist;
+		float stored_depth;
+		if(params.bilinear_reprojection > 0.5) {
+			hist = mix(
+				mix(imageLoad(history, b), imageLoad(history, b + ivec2(1, 0)), f.x),
+				mix(imageLoad(history, b + ivec2(0, 1)), imageLoad(history, b + ivec2(1, 1)), f.x),
+				f.y);
+			stored_depth = mix(
+				mix(imageLoad(history_depth, b), imageLoad(history_depth, b + ivec2(1, 0)), f.x),
+				mix(imageLoad(history_depth, b + ivec2(0, 1)), imageLoad(history_depth, b + ivec2(1, 1)), f.x),
+				f.y).r;
+		} else {
+			ivec2 rpv = ivec2(prev_px);
+			hist = imageLoad(history, rpv);
+			stored_depth = imageLoad(history_depth, rpv).r;
+		}
 		//Soft rejection: past the motion-compensated tolerance, blend toward fresh in proportion to
 		//the excess (full fresh at 2x tolerance) instead of a hard reset. depth_threshold <= 0 disables.
 		float w = params.accumulation_weight;
-		float stored_depth = imageLoad(history_depth, read_uv).r;
 		if(params.depth_threshold > 0.0) {
 			float delta = abs(stored_depth - depth);
 			float tol = params.depth_threshold * max(stored_depth, depth) + abs(d_exp - depth);

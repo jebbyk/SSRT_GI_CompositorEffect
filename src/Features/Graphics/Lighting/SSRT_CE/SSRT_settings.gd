@@ -178,6 +178,16 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
+## Filter the history read at the fractional reprojection position (4-tap bilinear).
+## Off = nearest texel: crisper, but sub-texel motion quantizes to 0/1-texel jumps.
+@export var bilinear_reprojection: bool = true:
+	set(value):
+		if bilinear_reprojection == value:
+			return
+		bilinear_reprojection = value
+		s_changed.emit()
+
+
 @export_category("Debug")
 enum DebugView { NONE, MOTION_VECTORS }
 

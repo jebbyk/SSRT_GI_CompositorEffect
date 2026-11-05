@@ -157,14 +157,16 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 8
+rays_amount = 1
 steps_per_ray = 64
 bounce_intensity = 0.5
 occlusion_intensity = 5.0
 back_face_lighting = true
 z_thickness = 8.0
+blur_kernel_size = 3
 blur_plane_treshold = 0.35
 accumulation_frames = 64
+reproj_depth_threshold = 0.051
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -424,7 +426,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="rot_cube_origin" type="Node3D" parent="building" unique_id=1384700763]
-transform = Transform3D(-1.8212674e-07, 0.38946792, 0.6604329, -10.5583935, -4.3140485e-08, 2.9596157e-16, 4.2406657e-07, -0.90684277, 0.2836406, -3.8908448, 0.4592483, -16.662704)
+transform = Transform3D(-2.3372198e-07, 0.4998015, 0.61978376, -10.5583935, -4.3140485e-08, 2.9596157e-16, 3.9796558e-07, -0.85102737, 0.363994, -3.8908448, 0.4592483, -16.662704)
 script = ExtResource("2_vr1i5")
 rotation_speed = Vector3(0, 90, 0)
 
@@ -436,7 +438,7 @@ gi_lightmap_texel_scale = 8.0
 size = Vector3(1, 1.22879, 1)
 
 [node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-3.443344e-07, 0.9613426, 0.16263527, -8.087198, -4.3140485e-08, -6.5500957e-16, 7.9987124e-08, -0.22331499, 0.70012414, -8.238224, -0.6360631, 5.2807665)
+transform = Transform3D(8.945624e-08, -0.24975169, 0.69537085, -8.087198, -4.3140485e-08, -6.5500957e-16, 3.4199667e-07, -0.9548158, -0.18188852, -8.238224, -0.6360631, 5.2807665)
 material_override = SubResource("StandardMaterial3D_gm1f2")
 gi_mode = 2
 gi_lightmap_texel_scale = 8.0
@@ -465,7 +467,7 @@ radial_segments = 24
 rings = 16
 
 [node name="Big yellow sphere origin" type="CSGSphere3D" parent="building" unique_id=688619008]
-transform = Transform3D(0.14021625, 0, 0.090587586, 0, 0.16693322, 0, -0.090587586, 0, 0.14021625, -5.0089827, 0.81341743, -6.437267)
+transform = Transform3D(0.14577886, 0, 0.081334054, 0, 0.16693322, 0, -0.081334054, 0, 0.14577886, -5.0089827, 0.81341743, -6.437267)
 material_override = SubResource("StandardMaterial3D_3ctqi")
 gi_mode = 2
 radius = 0.47727227
@@ -639,7 +641,7 @@ transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9
 transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, 3.4116602, 1.4305115e-06, -0.2489307)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.9514614, -0.11358422, -0.28603908, 0.22561261, -0.37472674, 0.8992655, -0.20932877, -0.92015076, -0.3309124, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.85773176, 0.042093936, -0.5123699, 0.40413043, -0.6712323, 0.62138945, -0.31776237, -0.74005, -0.59274954, 5.7162585, 1.8341535, -3.6544616)
 visible = false
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
@@ -653,7 +655,7 @@ directional_shadow_fade_start = 0.95
 directional_shadow_max_distance = 400.0
 directional_shadow_pancake_size = 0.0
 script = ExtResource("2_vr1i5")
-rotation_speed = Vector3(5, 0, 0)
+rotation_speed = Vector3(0, 0, 0)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1388189320]
 environment = SubResource("Environment_xekms")
@@ -684,14 +686,14 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 scaling_3d_scale = 0.3333
-size = Vector2i(326, 173)
+size = Vector2i(592, 424)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.82954097, 0.3491972, -0.4358017, 0, 0.7803831, 0.6253018, 0.5584459, 0.5187135, -0.6473597, -16.501991, 6.4585605, 4.4169855)
+transform = Transform3D(-0.30535695, -0.4390243, 0.84499395, 0, 0.8873769, 0.46104473, -0.95223796, 0.1407832, -0.2709667, -5.051632, 3.68321, -2.6762602)
 fov = 70.01
 size = 11.230892
 

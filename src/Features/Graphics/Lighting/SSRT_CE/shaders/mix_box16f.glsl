@@ -41,6 +41,7 @@ layout(push_constant, std430) uniform Params {
 	float valid_count;
 	float reprojection_enabled;
 	float depth_threshold;
+	float bilinear_reprojection;
 } params;
 
 
@@ -87,7 +88,13 @@ void main() {
 	if(reproj) {
 		bool rp_ok = prev_px.x >= 0.5 && prev_px.y >= 0.5
 			&& prev_px.x <= float(size.x) - 0.5 && prev_px.y <= float(size.y) - 0.5;
+		//Nearest tap; the bilinear toggle uses the fractional taps instead.
 		ivec2 rpv = ivec2(prev_px);
+		//4-tap bilinear taps at the fractional prev_px (texel-center space), shared by all slots;
+		//the clamp keeps the +1 taps in bounds.
+		vec2 q = prev_px - 0.5;
+		ivec2 b = clamp(ivec2(floor(q)), ivec2(0), size - 2);
+		vec2 f = q - vec2(b);
 		vec4 sum = vec4(0.0);
 		for(int i = 0; i < sc; i++) {
 			vec4 v;
@@ -97,9 +104,23 @@ void main() {
 				//Soft rejection: past the motion-compensated tolerance, blend the slot toward fresh in
 				//proportion to the excess (full fresh at 2x tolerance). depth_threshold <= 0 disables.
 				float w_stale = 1.0;
+				vec4 hist = fresh;
 				if(rp_ok) {
 					w_stale = 0.0;
-					float stored_depth = imageLoad(history_depth, ivec3(rpv, i)).r;
+					float stored_depth;
+					if(params.bilinear_reprojection > 0.5) {
+						hist = mix(
+							mix(imageLoad(history, ivec3(b, i)), imageLoad(history, ivec3(b + ivec2(1, 0), i)), f.x),
+							mix(imageLoad(history, ivec3(b + ivec2(0, 1), i)), imageLoad(history, ivec3(b + ivec2(1, 1), i)), f.x),
+							f.y);
+						stored_depth = mix(
+							mix(imageLoad(history_depth, ivec3(b, i)), imageLoad(history_depth, ivec3(b + ivec2(1, 0), i)), f.x),
+							mix(imageLoad(history_depth, ivec3(b + ivec2(0, 1), i)), imageLoad(history_depth, ivec3(b + ivec2(1, 1), i)), f.x),
+							f.y).r;
+					} else {
+						hist = imageLoad(history, ivec3(rpv, i));
+						stored_depth = imageLoad(history_depth, ivec3(rpv, i)).r;
+					}
 					if(params.depth_threshold > 0.0) {
 						float delta = abs(stored_depth - depth);
 						float tol = params.depth_threshold * max(stored_depth, depth) + abs(d_exp - depth);
@@ -107,8 +128,10 @@ void main() {
 							w_stale = min((delta - tol) / tol, 1.0);
 						}
 					}
+					v = w_stale >= 1.0 ? fresh : mix(hist, fresh, w_stale);
+				} else {
+					v = fresh;
 				}
-				v = w_stale >= 1.0 ? fresh : mix(imageLoad(history, ivec3(rpv, i)), fresh, w_stale);
 				imageStore(history_write, ivec3(uv, i), v);
 				//Re-seed the depth fingerprint to the current frame each pass: the check then compares
 				//1-frame-apart depths (not i-frame-apart), so old slots are not false-rejected by camera motion.
