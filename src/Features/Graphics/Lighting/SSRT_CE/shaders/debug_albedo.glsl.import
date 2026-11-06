@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://ds26h7utwnqiu"
+path="res://.godot/imported/debug_albedo.glsl-fe469161ee1112dfea30cc9b0f214679.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_albedo.glsl"
+dest_files=["res://.godot/imported/debug_albedo.glsl-fe469161ee1112dfea30cc9b0f214679.res"]
+
+[params]
+

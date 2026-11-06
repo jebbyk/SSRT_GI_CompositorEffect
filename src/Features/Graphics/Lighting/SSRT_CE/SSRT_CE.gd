@@ -24,6 +24,7 @@ const MIX_EMA_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/m
 const MIX_BOX8_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box8.glsl"
 const MIX_BOX16F_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box16f.glsl"
 const DEBUG_MV_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_mv.glsl"
+const DEBUG_ALBEDO_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_albedo.glsl"
 
 #Debug MV pass (set 0): engine velocity texture, bound as a sampler.
 const DEBUG_MV_VELOCITY_BINDING := 3
@@ -41,6 +42,7 @@ const TEXTURE_OUT_IMAGE_BINDING := 1
 #Specialization constant bindings
 const BLUR_OFFSET_CONSTANT_BINDING: int = 0
 const MIX_ALBEDO_GI_CONSTANT: int = 0
+const DEBUG_ALBEDO_GI_CONSTANT: int = 0
 
 #Mix pass: set 1 bindings
 const ALBEDO_TEXTURE_BINDING := 1
@@ -113,6 +115,8 @@ var mix_box16f_shader : RID
 var mix_box16f_pipeline : RID
 var debug_mv_shader : RID
 var debug_mv_pipeline : RID
+var debug_albedo_shader : RID
+var debug_albedo_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
 var history_depth_uniform : RDUniform
@@ -191,6 +195,7 @@ func _render_setup() -> void:
 		create_mix_box8_pipeline()
 		create_mix_box16f_pipeline()
 		create_debug_mv_pipeline()
+		create_debug_albedo_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
 	
@@ -347,6 +352,19 @@ func create_debug_mv_pipeline() -> void:
 		rd.free_rid(debug_mv_pipeline)
 	
 	debug_mv_pipeline = create_pipeline(debug_mv_shader)
+
+
+func create_debug_albedo_pipeline() -> void:
+	if not debug_albedo_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_albedo_pipeline(). msg: Debug albedo shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_albedo_pipeline):
+		rd.free_rid(debug_albedo_pipeline)
+	
+	var constants := {}
+	if albedo_handoff:
+		constants[DEBUG_ALBEDO_GI_CONSTANT] = true
+	debug_albedo_pipeline = create_pipeline(debug_albedo_shader, constants)
 
 
 func _ema_active() -> bool:
@@ -579,6 +597,28 @@ func _render_view(p_view : int) -> void:
 		)
 		return
 	
+	#Unlit albedo overlay: writes exactly what the GI bounce multiplies by (the source
+	#viewport's albedo, else the lit-color fallback). Reuses the mix pass' albedo binding.
+	if settings.debug_view == SSRTSettings.DebugView.UNLIT_ALBEDO:
+		var albedo_bind : RID = albedo_rd_texture
+		if not albedo_bind.is_valid():
+			albedo_bind = albedo_placeholder
+		var debug_albedo_set_0 : Array[RDUniform] = [
+			get_scene_data_ubo(),
+			get_color_image_uniform(p_view),
+			get_depth_image_uniform(p_view),
+		]
+		var debug_albedo_set_1 : Array[RDUniform] = [
+			get_sampler_uniform(albedo_bind, albedo_sampler, ALBEDO_TEXTURE_BINDING),
+		]
+		run_compute_shader(
+			"SSRT: Debug Albedo",
+			debug_albedo_shader,
+			debug_albedo_pipeline,
+			[debug_albedo_set_0, debug_albedo_set_1],
+			push_constant,
+		)
+		return
 	
 	var uniform_sets : Array[Array]
 	
@@ -888,4 +928,5 @@ func _recompile_shaders() -> void:
 	mix_box8_shader = create_shader(MIX_BOX8_SHADER_PATH)
 	mix_box16f_shader = create_shader(MIX_BOX16F_SHADER_PATH)
 	debug_mv_shader = create_shader(DEBUG_MV_SHADER_PATH)
+	debug_albedo_shader = create_shader(DEBUG_ALBEDO_SHADER_PATH)
 	shaders_dirty = true
