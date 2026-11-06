@@ -45,6 +45,7 @@ layout(push_constant, std430) uniform Params {
 
 #include "includes/common.glsl"
 #include "includes/albedo.glsl"
+#include "includes/disocclusion.glsl"
 
 void main() {
 	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
@@ -106,16 +107,9 @@ void main() {
 			hist = imageLoad(history, rpv);
 			stored_depth = imageLoad(history_depth, rpv).r;
 		}
-		//Soft rejection: past the motion-compensated tolerance, blend toward fresh in proportion to
-		//the excess (full fresh at 2x tolerance) instead of a hard reset. depth_threshold <= 0 disables.
-		float w = params.accumulation_weight;
-		if(params.depth_threshold > 0.0) {
-			float delta = abs(stored_depth - depth);
-			float tol = params.depth_threshold * max(stored_depth, depth) + abs(d_exp - depth);
-			if(delta > tol) {
-				w = max(w, min((delta - tol) / tol, 1.0));
-			}
-		}
+		//Soft rejection: past the motion-compensated tolerance, blend toward fresh in proportion
+		//to the excess (full fresh at 2x tolerance) instead of a hard reset.
+		float w = max(params.accumulation_weight, disocclusion_staleness(stored_depth, depth, d_exp));
 		acc = mix(hist, GI, w);
 	}
 	imageStore(history_write, uv, acc);
