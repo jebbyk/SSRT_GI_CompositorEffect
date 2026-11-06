@@ -144,11 +144,11 @@ var _ema_swap_by_vp : Dictionary = {}
 #Warn once while a box mode falls back to plain mix (no 3D history texture).
 var _box_mode_warned : bool = false
 
-#Warn once when _render_setup is skipped on the albedo source viewport.
-var _albedo_setup_skip_reported : bool = false
+#Warn once when _render_setup is skipped on an MSAA-less viewport.
+var _msaaless_setup_reported : bool = false
 
-#Memoized albedo-source detection per viewport: the probe makes the engine print the STORAGE_BIT error, so it runs at most once.
-var _albedo_source_by_vp : Dictionary = {}
+#Memoized MSAA-less detection per viewport: the probe makes the engine print the STORAGE_BIT error, so it runs at most once.
+var _msaaless_by_vp : Dictionary = {}
 
 #Albedo (unlit) source state, see albedo_handoff.gd
 var albedo_sampler : RID
@@ -199,14 +199,16 @@ func _render_setup() -> void:
 		shaders_dirty = false
 		_report_vram_estimate()
 	
-	#The albedo source viewport shares this world, so it also runs this effect. Skip
-	#setup there: it would publish its smaller raster to the handoff (the main viewport
-	#sizes the albedo target from it). Its passes are already skipped by run_compute_shader().
-	if _is_albedo_source_viewport():
-		if not _albedo_setup_skip_reported:
-			_albedo_setup_skip_reported = true
+	#An MSAA-less viewport in this world gets a D32 depth layer with no STORAGE_BIT, so
+	#its scene set can't be built. Skip setup there: it would publish its raster to the
+	#handoff (the main viewport sizes the albedo target from it). Its passes are already
+	#skipped by run_compute_shader(). (The albedo source SubViewport no longer reaches
+	#this effect at all — its camera carries an empty compositor, see SSRTAlbedoSource.)
+	if _is_msaaless_viewport():
+		if not _msaaless_setup_reported:
+			_msaaless_setup_reported = true
 			push_warning(
-				"SSRT_CE: render callback is on the albedo source SubViewport "
+				"SSRT_CE: render callback is on an MSAA-less viewport "
 				+ "(scene set has no STORAGE_BIT depth); setup skipped so the shared "
 				+ "ping-pong stays at the main viewport's raster."
 			)
@@ -244,19 +246,21 @@ func _render_setup() -> void:
 	push_constant = _build_push_constant(render_size)#TODO no need to do it every frame?
 
 
-#True when this callback runs on the albedo source viewport. Same signal run_compute_shader()
-#uses to skip passes: the scene set fails to build when the depth layer lacks STORAGE_BIT (no MSAA).
-func _is_albedo_source_viewport() -> bool:
+#True when this callback runs on an MSAA-less viewport of the world (its D32 depth layer
+#lacks STORAGE_BIT, so the scene set can't be built) — the same signal run_compute_shader()
+#uses to skip passes. The albedo source SubViewport is excluded upstream (its camera's
+#empty compositor), so this now covers other plain SubViewports.
+func _is_msaaless_viewport() -> bool:
 	var vp_key : String = str(render_scene_buffers.get_instance_id()) if render_scene_buffers else "null_vp"
-	if _albedo_source_by_vp.has(vp_key):
-		return _albedo_source_by_vp[vp_key]
+	if _msaaless_by_vp.has(vp_key):
+		return _msaaless_by_vp[vp_key]
 	if not trace_shader.is_valid():
 		return false
 	#A failing get_cache() makes the engine print the usage-flag error (hence the once-per-viewport memo above).
 	var scene_set := get_scene_uniform_set(0)
-	var is_albedo := not UniformSetCacheRD.get_cache(trace_shader, 0, scene_set).is_valid()
-	_albedo_source_by_vp[vp_key] = is_albedo
-	return is_albedo
+	var is_msaaless := not UniformSetCacheRD.get_cache(trace_shader, 0, scene_set).is_valid()
+	_msaaless_by_vp[vp_key] = is_msaaless
+	return is_msaaless
 
 
 func create_trace_pipeline() -> void:

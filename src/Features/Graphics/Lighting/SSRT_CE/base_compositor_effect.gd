@@ -349,11 +349,11 @@ func run_compute_shader(
 	# Resolve and validate the uniform sets before recording any commands.
 	# A set is invalid when it cannot be created — most commonly because one
 	# of its images lacks TEXTURE_USAGE_STORAGE_BIT: the scene's depth layer
-	# is an R32 storage image only when MSAA is on, so a viewport without
-	# MSAA (typically the albedo source SubViewport, which shares this world
-	# and therefore also runs this effect) gets a D32 depth layer and no
-	# valid set. Dispatching there with an unbound set would spam "Uniforms
-	# were never supplied for set (N)" every frame, so the pass is skipped.
+	# is an R32 storage image only when MSAA is on (SubViewports default to
+	# MSAA off; only the root Window inherits the project default), so an
+	# MSAA-less viewport gets a D32 depth layer and no valid set. Dispatching
+	# there with an unbound set would spam "Uniforms were never supplied for
+	# set (N)" every frame, so the pass is skipped.
 	var set_rids : Array[RID] = []
 	for idx in p_uniform_sets.size():
 		var uniforms : Array = p_uniform_sets[idx]
@@ -391,8 +391,8 @@ func _report_skipped_pass(p_label : String, p_set : int) -> void:
 			"from: BaseCompositorEffect::run_compute_shader(). "
 			+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created because one of its "
 			+ "images lacks TEXTURE_USAGE_STORAGE_BIT (typically the depth layer of a viewport without MSAA, "
-			+ "e.g. the albedo source SubViewport). The effect stays disabled on that viewport; this warning "
-			+ "is printed once."
+			+ "e.g. a plain SubViewport sharing the world). The effect stays disabled on that viewport; this "
+			+ "warning is printed once."
 		) % [p_label, p_set]
 	)
 
