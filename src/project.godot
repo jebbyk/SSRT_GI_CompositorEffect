@@ -35,6 +35,7 @@ enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/godo
 [rendering]
 
 driver/threads/thread_model=2
+lights_and_shadows/directional_shadow/size=8192
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=4
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=4
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=4
@@ -56,3 +57,4 @@ global_illumination/sdfgi/probe_ray_count=5
 global_illumination/sdfgi/frames_to_converge=0
 global_illumination/sdfgi/frames_to_update_lights=0
 lightmapping/bake_performance/region_size=1024
+anti_aliasing/quality/use_taa=true

@@ -11,7 +11,6 @@ script/source = "@tool
 ## Slowly rotates the node around its local axes.
 ## Speed is in degrees per second per axis, so rotation is independent of FPS.
 ## A zero component on an axis leaves that axis untouched.
-class_name AxisRotator
 extends Node3D
 
 ## Rotation speed in degrees/second for each local axis (X, Y, Z).
@@ -89,10 +88,52 @@ compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buyp
 
 [sub_resource type="Compositor" id="Compositor_rpuu0"]
 
+[sub_resource type="StandardMaterial3D" id="Material_floor"]
+albedo_color = Color(0.55, 0.55, 0.55, 1)
+metallic_specular = 0.0
+
+[sub_resource type="BoxMesh" id="Mesh_floor"]
+material = SubResource("Material_floor")
+size = Vector3(30, 0.5, 30)
+
+[sub_resource type="StandardMaterial3D" id="Material_red"]
+albedo_color = Color(0.89465195, 0.3758625, 0, 1)
+metallic_specular = 0.0
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="Mesh_box_red"]
+material = SubResource("Material_red")
+size = Vector3(2, 2, 2)
+
+[sub_resource type="StandardMaterial3D" id="Material_blue"]
+albedo_color = Color(0.2535675, 0.40932652, 0.9691188, 1)
+metallic_specular = 0.0
+roughness = 0.7
+
+[sub_resource type="BoxMesh" id="Mesh_box_blue"]
+material = SubResource("Material_blue")
+size = Vector3(2, 2, 2)
+
+[sub_resource type="CylinderMesh" id="Mesh_column_blue"]
+material = SubResource("Material_blue")
+height = 3.0
+
+[sub_resource type="CylinderMesh" id="Mesh_column_red"]
+material = SubResource("Material_red")
+height = 3.0
+
+[sub_resource type="StandardMaterial3D" id="Material_wall"]
+albedo_color = Color(0.72, 0.72, 0.72, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="Mesh_wall"]
+material = SubResource("Material_wall")
+size = Vector3(30, 8, 0.5)
+
 [node name="Node3D" type="Node3D" unique_id=41970100]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.06418419, 0.80736053, -0.5865575, 0.7145723, 0.37311047, 0.5917559, 0.6966109, -0.45711917, -0.5529697, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.064184174, 0.9486646, 0.3097031, 0.7145723, -0.26032484, 0.6493208, 0.6966109, 0.17962913, -0.69459814, 5.7162585, 1.8341535, -3.6544616)
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -112,22 +153,51 @@ environment = SubResource("Environment_xekms")
 compositor = SubResource("Compositor_n8ajh")
 
 [node name="Camera3D-free-look" type="Camera3D" parent="." unique_id=790363406]
-transform = Transform3D(-0.98710275, 0.022279916, -0.15853001, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
+transform = Transform3D(-0.35116255, 0.06629038, -0.93396497, 0.0030996427, 0.9975675, 0.069639295, 0.93630934, 0.021559753, -0.35051382, -9.921714, 2.6008582, 2.5936444)
 script = ExtResource("2_48kf0")
 
 [node name="UnlitAlbedoSourceSubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("camera_source")]
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
-size = Vector2i(1163, 942)
+size = Vector2i(1350, 848)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(0.9837266, 0.11295952, -0.13972148, 0, 0.7776485, 0.6286993, 0.17967178, -0.6184682, 0.76499355, -30.007006, 85.017166, 105.59049)
+transform = Transform3D(0.23154928, 0.34393826, -0.9099953, 0, 0.93541694, 0.35354653, 0.9728232, -0.08186344, 0.21659511, -9.697714, 3.1749682, 3.8574834)
 visible = false
 compositor = SubResource("Compositor_rpuu0")
 fov = 70.01
 size = 11.230892
+
+[node name="Floor" type="MeshInstance3D" parent="." unique_id=1700000001]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 7)
+mesh = SubResource("Mesh_floor")
+
+[node name="RedBox" type="MeshInstance3D" parent="Floor" unique_id=1700000003]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -2, 1.6721473, 2)
+mesh = SubResource("Mesh_box_red")
+skeleton = NodePath("../..")
+
+[node name="BlueBox" type="MeshInstance3D" parent="Floor" unique_id=1700000004]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 2, 1.6721473, 2)
+mesh = SubResource("Mesh_box_blue")
+skeleton = NodePath("../..")
+
+[node name="BlueColumn" type="MeshInstance3D" parent="Floor" unique_id=1700000005]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.99328804, -0.67793655)
+mesh = SubResource("Mesh_column_blue")
+skeleton = NodePath("../..")
+
+[node name="RedColumn" type="MeshInstance3D" parent="Floor" unique_id=1700000006]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.99328804, -0.67793655)
+mesh = SubResource("Mesh_column_red")
+skeleton = NodePath("../..")
+
+[node name="Wall" type="MeshInstance3D" parent="Floor" unique_id=1700000002]
+transform = Transform3D(1, 0, 0, 0, 0.6137241, 0, 0, 0, 1, 0, 2.502009, -5.946562)
+mesh = SubResource("Mesh_wall")
+skeleton = NodePath("../..")
