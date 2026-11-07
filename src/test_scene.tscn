@@ -1,123 +1,27 @@
 [gd_scene format=3 uid="uid://cfkbg7isbwyag"]
 
-[ext_resource type="Material" uid="uid://cc5aylecs32r4" path="res://Textures/PavingStones/mat_PavingStones.tres" id="1_coq8p"]
-[ext_resource type="Shader" uid="uid://bh5gqs1iaw8wu" path="res://Features/Graphics/Lighting/SSRT_sp/ssrt_trace.gdshader" id="1_f8t32"]
 [ext_resource type="Script" uid="uid://ccb43csyh10lr" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_CE.gd" id="2_8pr8v"]
 [ext_resource type="Script" uid="uid://b30a24s45nobl" path="res://Features/Testing/camera.gd" id="2_48kf0"]
-[ext_resource type="Script" uid="uid://b8qeeivo4qsul" path="res://Features/Testing/axis_rotator.gd" id="2_vr1i5"]
-[ext_resource type="Texture2D" uid="uid://bj8ttgg0qulg1" path="res://Features/Graphics/Lighting/SSRT_sp/bluenoise.png" id="2_xhejr"]
 [ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_buypi"]
-[ext_resource type="PackedScene" uid="uid://ji4d67vjyawm" path="res://Nature/tree.tscn" id="3_vr1i5"]
 [ext_resource type="Script" uid="uid://dufx3i0ilcvu6" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_handoff.gd" id="4_handoff"]
 [ext_resource type="Script" uid="uid://c580tb3qpuiwx" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_source_viewport.gd" id="5_albsrc"]
-[ext_resource type="Script" uid="uid://boqxebmjs7bpl" path="res://Features/Testing/fps_counter.gd" id="11_rpuu0"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4m2n"]
-cull_mode = 2
-metallic_specular = 0.0
-emission_enabled = true
-emission = Color(0.48886454, 0.9336568, 7.70092e-07, 1)
-emission_energy_multiplier = 4.0
+[sub_resource type="GDScript" id="GDScript_2nij2"]
+script/source = "@tool
+## Slowly rotates the node around its local axes.
+## Speed is in degrees per second per axis, so rotation is independent of FPS.
+## A zero component on an axis leaves that axis untouched.
+class_name AxisRotator
+extends Node3D
 
-[sub_resource type="QuadMesh" id="QuadMesh_u8xit"]
+## Rotation speed in degrees/second for each local axis (X, Y, Z).
+@export var rotation_speed: Vector3 = Vector3(0.0, 45.0, 0.0)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_coq8p"]
-emission_enabled = true
-emission = Color(1, 0, 0, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_46pal"]
-cull_mode = 2
-albedo_color = Color(0, 0, 0, 1)
-metallic_specular = 0.0
-emission_enabled = true
-emission = Color(1, 0.244931, 0.19072, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5dwf6"]
-cull_mode = 2
-albedo_color = Color(0, 0, 0, 1)
-metallic_specular = 0.0
-emission_enabled = true
-emission = Color(0.105882, 0.615686, 0.941176, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="BoxMesh" id="BoxMesh_fihiy"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fhamb"]
-metallic_specular = 0.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_87h58"]
-metallic_specular = 0.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ua33n"]
-metallic_specular = 0.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uggcw"]
-metallic_specular = 0.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m0v07"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2s5vt"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5vfve"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gm1f2"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8pr8v"]
-transparency = 1
-albedo_color = Color(1, 1, 1, 0.49019608)
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_81uxq"]
-metallic_specular = 0.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3ctqi"]
-albedo_color = Color(0, 0, 0, 1)
-metallic_specular = 0.0
-emission_enabled = true
-emission = Color(0.9843137, 0.64705884, 0, 1)
-emission_energy_multiplier = 4.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_km8wv"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_du0rd"]
-albedo_color = Color(0.643137, 0.643137, 0.643137, 1)
-metallic = 1.0
-metallic_specular = 1.0
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7cbxl"]
-albedo_color = Color(1, 0.5773793, 0.33141887, 1)
-roughness = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pb2jm"]
-metallic_specular = 0.0
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7s3c4"]
-albedo_color = Color(0.14117648, 1, 0, 1)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eprb5"]
-albedo_color = Color(0.278431, 0.439216, 1, 1)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nxybv"]
-albedo_color = Color(1, 0, 0, 1)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5qgeb"]
-albedo_color = Color(0, 0, 0, 1)
-emission_enabled = true
-emission = Color(0, 0.886275, 0, 1)
-emission_energy_multiplier = 1.77
+func _process(delta: float) -> void:
+	rotation.x += deg_to_rad(rotation_speed.x) * delta
+	rotation.y += deg_to_rad(rotation_speed.y) * delta
+	rotation.z += deg_to_rad(rotation_speed.z) * delta
+"
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_coq8p"]
 sky_top_color = Color(0.32220104, 0.508995, 0.7264341, 1)
@@ -183,454 +87,12 @@ metadata/_custom_type_script = "uid://ccb43csyh10lr"
 [sub_resource type="Compositor" id="Compositor_n8ajh"]
 compositor_effects = Array[CompositorEffect]([SubResource("CompositorEffect_buypi"), null])
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_07lwh"]
-resource_local_to_scene = true
-render_priority = 127
-shader = ExtResource("1_f8t32")
-shader_parameter/raysAmount = 16.0
-shader_parameter/stepsPerRay = 64.0
-shader_parameter/intencity = 3.00000014180148
-shader_parameter/aoIntencity = 4.00000018930148
-shader_parameter/intencityFallof = 0.0
-shader_parameter/rayLength = 4.00000018930148
-shader_parameter/screenSpaceFixedRayLength = false
-shader_parameter/depthTreshold = 1.00000004680148
-shader_parameter/rayBias = 0.0
-shader_parameter/skyColor = Color(0.18899366, 0.3704716, 0.5038505, 1)
-shader_parameter/skyColorIntencity = 0.00999999977648
-shader_parameter/rayMissToSky = false
-shader_parameter/backFaceLighting = true
-shader_parameter/farPlane = 100.0000047025
-shader_parameter/blendMode = 0
-shader_parameter/perspective = 1.00000004424012
-shader_parameter/noiseTexture = ExtResource("2_xhejr")
-shader_parameter/noiseMode = 1
-
-[sub_resource type="QuadMesh" id="QuadMesh_w72ga"]
-flip_faces = true
-size = Vector2(2, 2)
-
 [sub_resource type="Compositor" id="Compositor_rpuu0"]
 
 [node name="Node3D" type="Node3D" unique_id=41970100]
 
-[node name="building" type="Node3D" parent="." unique_id=1844695112]
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="building" unique_id=210229233]
-transform = Transform3D(-0.463875, 0, -0.463875, 0, 0.656018, 0, 0.463875, 0, -0.463875, -2.55625, 3.03149, 1.14606)
-material_override = SubResource("StandardMaterial3D_g4m2n")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D12" type="MeshInstance3D" parent="building" unique_id=564216429]
-transform = Transform3D(-0.3359095, 0, 0.56349343, 0, 0.656018, 0, -0.56349343, 0, -0.3359095, -3.7632234, 2.4584894, 1.1050503)
-material_override = SubResource("StandardMaterial3D_coq8p")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="green horizontal panel" type="MeshInstance3D" parent="building" unique_id=2139169941]
-transform = Transform3D(-2.99623, 0, 0, 0, -2.86755e-08, 0.656018, 0, 0.656018, 2.86755e-08, -10.6882, 3.0199044, 1.07141)
-material_override = SubResource("StandardMaterial3D_g4m2n")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D3" type="MeshInstance3D" parent="building" unique_id=1463076104]
-transform = Transform3D(0.000251879, 0, -0.656018, 0, 0.656018, 0, 0.656018, 0, 0.000251879, -2.29021, 1.99627, 1.06938)
-material_override = SubResource("StandardMaterial3D_46pal")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D8" type="MeshInstance3D" parent="building" unique_id=966369585]
-transform = Transform3D(0.000251879, 0, -0.656018, 0, 3.04284, 0, 0.656018, 0, 0.000251879, -7.28747, 2.2186, 1.08659)
-material_override = SubResource("StandardMaterial3D_46pal")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D9" type="MeshInstance3D" parent="building" unique_id=672144995]
-transform = Transform3D(3.343247, 0, 0.00025215576, 0, 3.0428395, 0, -0.0012837902, 0, 0.6566641, -6.5865884, 2.2186, 9.645057)
-material_override = SubResource("StandardMaterial3D_46pal")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D4" type="MeshInstance3D" parent="building" unique_id=1532232312]
-transform = Transform3D(-0.656018, 0, 5.73509e-08, 0, 0.656018, 0, -5.73509e-08, 0, -0.656018, -2.63657, 1.01428, 1.36082)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D5" type="MeshInstance3D" parent="building" unique_id=501658030]
-transform = Transform3D(-0.656018, 0, 5.73509e-08, 0, 0.656018, 0, -5.73509e-08, 0, -0.656018, -3.51749, 1.01424, -0.604714)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="blue horizontal panel" type="MeshInstance3D" parent="building" unique_id=756413700]
-transform = Transform3D(-3.8432, 0, 5.74616e-08, 0, 1.50849, 0, -3.35984e-07, 0, -0.657284, -10.5516, 0.62925, -0.0927711)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="blue vertical panel" type="MeshInstance3D" parent="building" unique_id=926769404]
-transform = Transform3D(6.04947e-08, 0, 0.657284, 0, 5.21393, 0, -0.461319, 0, 8.61924e-08, -14.3204, 3.15927, -6.47938)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-gi_mode = 2
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="MeshInstance3D13" type="MeshInstance3D" parent="building" unique_id=1518514344]
-transform = Transform3D(-0.16337334, 0, 0.61468595, 0, 5.2139297, 0, -0.43142128, 0, -0.2327732, -14.3204, 3.15927, 26.397596)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-gi_mode = 2
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="big blue panel" type="MeshInstance3D" parent="building" unique_id=1546940129]
-transform = Transform3D(14.864686, 0, -1.1492295e-07, 0, 5.21393, 0, 2.599019e-06, 0, 0.6572827, -3.3721185, 3.15927, -13.018173)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-mesh = SubResource("QuadMesh_u8xit")
-skeleton = NodePath("../..")
-
-[node name="blue box" type="MeshInstance3D" parent="building" unique_id=1902615745]
-transform = Transform3D(-0.656018, 0, 5.73509e-08, 0, 0.656018, 0, -5.73509e-08, 0, -0.656018, -18.750536, 1.01428, 2.5353844)
-material_override = SubResource("StandardMaterial3D_5dwf6")
-mesh = SubResource("BoxMesh_fihiy")
-skeleton = NodePath("../..")
-
-[node name="CSGBox3D4" type="CSGBox3D" parent="building" unique_id=1790775102]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.2594569, 3.3051968, 1.4983)
-material_override = SubResource("StandardMaterial3D_fhamb")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D6" type="CSGBox3D" parent="building" unique_id=1707334297]
-transform = Transform3D(-2.71957e-08, 0, -0.201422, 0, 0.201422, 0, 0.622165, 0, -8.80445e-09, -3.2574925, 2.3395085, 1.46445)
-material_override = SubResource("StandardMaterial3D_87h58")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D7" type="CSGBox3D" parent="building" unique_id=1454971449]
-transform = Transform3D(0.622165, 0, 0, 0, 0.201422, 0, 0, 0, 0.201422, -2.31802, 3.08238, 0.4987)
-material_override = SubResource("StandardMaterial3D_ua33n")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D8" type="CSGBox3D" parent="building" unique_id=230096140]
-transform = Transform3D(0.622165, 0, 0, 0, 0.201422, 0, 0, 0, 0.201422, -2.15613, 1.00581, 0.500302)
-material_override = SubResource("StandardMaterial3D_uggcw")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D9" type="CSGBox3D" parent="building" unique_id=1924358153]
-transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -9.69633, 0.642568, -0.973346)
-material_override = SubResource("StandardMaterial3D_m0v07")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D12" type="CSGBox3D" parent="building" unique_id=1992307430]
-transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -11.2412, 0.642568, -0.973346)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D26" type="CSGBox3D" parent="building" unique_id=966854412]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -11.364713, 2.7429464, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D29" type="CSGBox3D" parent="building" unique_id=1690884800]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -10.569877, 1.8879341, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D28" type="CSGBox3D" parent="building" unique_id=729779917]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -10.078344, 2.7429464, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D30" type="CSGBox3D" parent="building" unique_id=2028908259]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.96559376, -7.8126564, 3.2934325, 1.1785715)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D31" type="CSGBox3D" parent="building" unique_id=808322750]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -7.8126564, 1.4587789, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D32" type="CSGBox3D" parent="building" unique_id=1040452689]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.73294467, -6.6010323, 3.2934325, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D33" type="CSGBox3D" parent="building" unique_id=2008043879]
-transform = Transform3D(-1.0267665e-08, 0.201422, 0, -0.23489678, -8.80444e-09, 0, 0, 0, 0.522724, -6.6010323, 1.4587787, 1.0961502)
-material_override = SubResource("StandardMaterial3D_2s5vt")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D10" type="CSGBox3D" parent="building" unique_id=1335667674]
-transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -2.556432, 0.6425675, -6.5343137)
-material_override = SubResource("StandardMaterial3D_5vfve")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D35" type="CSGBox3D" parent="building" unique_id=1717740782]
-transform = Transform3D(-2.71957e-08, 0.201422, 0, -0.622165, -8.80444e-09, 0, 0, 0, 0.201422, -5.012249, 0.6425675, -6.4267216)
-material_override = SubResource("StandardMaterial3D_5vfve")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D11" type="CSGBox3D" parent="building" unique_id=1977674993]
-transform = Transform3D(-3.53503e-07, 0.201422, 0, -8.0872, -8.80444e-09, 0, 0, 0, 0.201422, -2.530014, -1.828439, -11.87117)
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D34" type="CSGBox3D" parent="building" unique_id=782321263]
-transform = Transform3D(-3.53503e-07, 0.775324, 0, -8.0872, -3.3890505e-08, 0, 0, 0, 0.201422, -5.7198677, -1.8284389, -11.828988)
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="transparent pannel" type="CSGBox3D" parent="building" unique_id=1227382355]
-transform = Transform3D(-1.8000748e-07, 0.201422, 0, -4.118088, -8.80444e-09, 0, 0, 0, 4.284111, -7.6211834, 2.6774201, -10.869936)
-material_override = SubResource("StandardMaterial3D_8pr8v")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D23" type="CSGBox3D" parent="building" unique_id=493621915]
-transform = Transform3D(-3.5350294e-07, 0.98693913, 0, -8.087198, -4.31405e-08, 0, 0, 0, 0.7187654, -4.857858, -0.6314235, -1.165185)
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="rot_cube_origin" type="Node3D" parent="building" unique_id=1384700763]
-transform = Transform3D(-4.6133508e-07, 0.98653954, -0.020456372, -10.5583935, -4.314049e-08, -1.920823e-15, -1.3135145e-08, 0.02808872, 0.71847415, -3.8908448, 0.4592483, -16.662704)
-script = ExtResource("2_vr1i5")
-rotation_speed = Vector3(0, 90, 0)
-
-[node name="CSGBox3D25" type="CSGBox3D" parent="building/rot_cube_origin" unique_id=663577053]
-transform = Transform3D(1.0000001, 4.440892e-16, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0.14897312, 0, -2.5748749)
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D24" type="CSGBox3D" parent="building" unique_id=2001900720]
-transform = Transform3D(-3.3958327e-07, 0.9480779, -0.19970937, -8.087198, -4.314049e-08, -9.2506354e-17, -9.822089e-08, 0.27422157, 0.6904637, -8.238224, -0.6360631, 5.2807665)
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.229, 1.685)
-script = ExtResource("2_vr1i5")
-rotation_speed = Vector3(0, 180, 0)
-
-[node name="CSGBox3D20" type="CSGBox3D" parent="building" unique_id=574614921]
-transform = Transform3D(-5.8377327e-07, 0.841451, 0, -13.355165, -3.678101e-08, 0, 0, 0, 0.841451, -5.506878, -0.7975452, -10.967128)
-visible = false
-material_override = SubResource("StandardMaterial3D_gm1f2")
-gi_mode = 2
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGSphere3D" type="CSGSphere3D" parent="building" unique_id=1438303571]
-transform = Transform3D(0.404484, 0, 0, 0, 0.404484, 0, 0, 0, 0.404484, -3.37831, 0.940493, 0.500302)
-material_override = SubResource("StandardMaterial3D_81uxq")
-radial_segments = 16
-rings = 8
-
-[node name="small yellow sphere" type="CSGSphere3D" parent="building" unique_id=82164789]
-transform = Transform3D(0.9498108, 0, 0, 0, 0.9498108, 0, 0, 0, 0.9498108, -8.426501, 1.0689125, -6.405082)
-material_override = SubResource("StandardMaterial3D_3ctqi")
-radial_segments = 24
-rings = 16
-
-[node name="Big yellow sphere origin" type="CSGSphere3D" parent="building" unique_id=688619008]
-transform = Transform3D(-0.16678898, 0, 0.006938399, 0, 0.16693322, 0, -0.006938399, 0, -0.16678898, -5.0089827, 0.81341743, -6.437267)
-material_override = SubResource("StandardMaterial3D_3ctqi")
-gi_mode = 2
-radius = 0.47727227
-radial_segments = 24
-rings = 16
-script = ExtResource("2_vr1i5")
-
-[node name="big yellow sphere" type="CSGSphere3D" parent="building/Big yellow sphere origin" unique_id=1546767737]
-transform = Transform3D(5.438745, 0, 0, 0, 5.438745, 0, 0, 0, 5.438745, 5.1639595, 2.0713873, -0.51782227)
-material_override = SubResource("StandardMaterial3D_3ctqi")
-gi_mode = 2
-radius = 0.47727227
-radial_segments = 24
-rings = 16
-
-[node name="big white sphere" type="CSGSphere3D" parent="building" unique_id=957497068]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -17.591957, 1.56709, 0.549335)
-material_override = SubResource("StandardMaterial3D_km8wv")
-radial_segments = 24
-rings = 16
-
-[node name="Metal sphere" type="CSGSphere3D" parent="building" unique_id=1431893683]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.729391, 1.56709, -4.1491055)
-material_override = SubResource("StandardMaterial3D_du0rd")
-gi_mode = 2
-radial_segments = 24
-rings = 16
-
-[node name="Glassy sphere" type="CSGSphere3D" parent="building" unique_id=889343382]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -10.729391, 1.56709, -6.490368)
-material_override = SubResource("StandardMaterial3D_7cbxl")
-gi_mode = 2
-radial_segments = 24
-rings = 16
-
-[node name="Glassy sphere2" type="CSGSphere3D" parent="building" unique_id=1400964751]
-transform = Transform3D(2.00312, 0, 0, 0, 2.00312, 0, 0, 0, 2.00312, -14.996246, 1.56709, 9.3438)
-material_override = SubResource("StandardMaterial3D_7cbxl")
-gi_mode = 2
-radial_segments = 24
-rings = 16
-
-[node name="yellow sphere" type="CSGSphere3D" parent="building" unique_id=413732070]
-transform = Transform3D(0.404484, 0, 0, 0, 0.404484, 0, 0, 0, 0.404484, -14.192704, 2.76775, -0.113693714)
-material_override = SubResource("StandardMaterial3D_3ctqi")
-radial_segments = 24
-rings = 16
-
-[node name="CSGBox3D" type="CSGBox3D" parent="building" unique_id=1642627745]
-transform = Transform3D(17.1189, 0, 0, 0, 5.27317, 0, 0, 0, 0.182826, -5.400646, 1.6468942, 1.5178139)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D27" type="CSGBox3D" parent="building" unique_id=1842460524]
-transform = Transform3D(43.32745, 0, 0, 0, 9.54872, 0, 0, 0, -0.088626824, -6.3761854, 1.6468942, -19.33663)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D3" type="CSGBox3D" parent="building" unique_id=1326576472]
-transform = Transform3D(40.452747, 0, 0, 0, -6.436842e-07, 0.18339, 0, -14.725807, -8.01621e-09, -6.3, 0.586, 3.624)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D21" type="CSGBox3D" parent="building" unique_id=1818134026]
-transform = Transform3D(40.452747, 0, 0, 0, -6.436842e-07, 0.18339, 0, -14.725807, -8.01621e-09, -6.3098855, 0.6055466, 21.436134)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D22" type="CSGBox3D" parent="building" unique_id=1608596775]
-transform = Transform3D(40.452747, 0, 0, 0, -6.436842e-07, 0.18339, 0, -14.725807, -8.01621e-09, -6.29365, 0.585714, 39.52145)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D18" type="CSGBox3D" parent="building" unique_id=1499781655]
-transform = Transform3D(40.452747, 0, 0, 0, -6.436842e-07, 0.18339, 0, -14.725807, -8.01621e-09, -6.281, 0.586, -14.376091)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.2179106, 1)
-
-[node name="CSGBox3D13" type="CSGBox3D" parent="building" unique_id=634165015]
-transform = Transform3D(-0.00546196, 0.0120408, -0.183077, -0.0199167, 5.4132, 0.000408201, 4.50516, 0.0239456, -0.000220154, 6.76156, 1.53621, 0.870895)
-material_override = SubResource("StandardMaterial3D_pb2jm")
-gi_lightmap_texel_scale = 10.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D16" type="CSGBox3D" parent="building" unique_id=88472307]
-transform = Transform3D(0.0199167, -5.4132, -0.000408193, -0.00546196, 0.0120406, -0.183077, 4.50516, 0.0239456, -0.000220154, 8.22791, 1.46852, 0.864126)
-material_override = SubResource("StandardMaterial3D_7s3c4")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D17" type="CSGBox3D" parent="building" unique_id=1957570516]
-transform = Transform3D(0.0199167, -5.4132, -0.000408193, -0.00546196, 0.0120406, -0.183077, 4.50516, 0.0239456, -0.000220154, 8.22791, 4.9334, 0.864126)
-material_override = SubResource("StandardMaterial3D_eprb5")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D15" type="CSGBox3D" parent="building" unique_id=217541151]
-transform = Transform3D(-0.00546196, 0.0120408, -0.183077, -0.0199167, 5.4132, 0.000408201, 4.50516, 0.0239456, -0.000220154, 9.835586, 1.53621, 0.870895)
-material_override = SubResource("StandardMaterial3D_nxybv")
-gi_lightmap_texel_scale = 10.0
-size = Vector3(1, 1.22879, 1)
-
-[node name="CSGBox3D14" type="CSGBox3D" parent="building" unique_id=702827387]
-transform = Transform3D(-5.119649, -0.0239456, 0.000220162, -0.022633273, 5.4132, 0.000408201, -0.0062071807, 0.0120408, -0.183077, 8.748604, 1.5372267, 0.87117386)
-material_override = SubResource("StandardMaterial3D_pb2jm")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1.0898438, 1.22879, 1)
-
-[node name="CSGBox3D5" type="CSGBox3D" parent="building" unique_id=1259804694]
-transform = Transform3D(-0.017163869, 0.012080497, -0.17627005, -0.06258699, 5.4310465, 0.00039302377, 14.157183, 0.024024546, -0.00021196851, -4.0084324, 1.7481503, 3.9357123)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.0625687, 1)
-
-[node name="CSGBox3D19" type="CSGBox3D" parent="building" unique_id=1075417059]
-transform = Transform3D(-0.017131016, 0.012123104, -0.18273754, -0.062467195, 5.450201, 0.00040744414, 14.130085, 0.024109278, -0.00021974581, -2.2473814, 1.7481503, 3.9357123)
-material_override = ExtResource("1_coq8p")
-gi_lightmap_texel_scale = 8.0
-size = Vector3(1, 1.0625687, 1)
-
-[node name="CSGSphere3D2" type="CSGSphere3D" parent="building" unique_id=1402525806]
-transform = Transform3D(0.520055, -0.000269564, -1.11637, 0.000336284, 1.23156, -0.000140719, 1.11637, -0.00024541, 0.520054, -4.60156, 1.13092, 0.770412)
-visible = false
-material_override = SubResource("StandardMaterial3D_5qgeb")
-radial_segments = 16
-rings = 12
-
-[node name="SpotLight3D" type="SpotLight3D" parent="building" unique_id=654206952]
-transform = Transform3D(0.9998599, 0, 0.016736917, 0, 1, 0, -0.016736917, 0, 0.9998599, -0.94565153, 1.7602876, 2.6896746)
-light_energy = 6.0
-light_indirect_energy = 0.0
-light_volumetric_fog_energy = 0.0
-light_specular = 0.0
-shadow_enabled = true
-
-[node name="SpotLight3D2" type="SpotLight3D" parent="building" unique_id=1992642736]
-transform = Transform3D(-0.9446749, -0.016315656, -0.3276022, 0.32465917, 0.09584853, -0.9409621, 0.046752598, -0.99526227, -0.08524868, 8.983447, 3.397127, 1.6111937)
-light_energy = 3.0
-light_indirect_energy = 0.0
-light_volumetric_fog_energy = 0.0
-light_specular = 0.0
-shadow_enabled = true
-spot_range = 5.333
-spot_angle = 21.28
-
-[node name="OmniLight3D" type="OmniLight3D" parent="building" unique_id=1192902031]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.971227, 2.6452222, 1.6709034)
-light_color = Color(1, 0.5882353, 0, 1)
-light_energy = 3.0
-omni_range = 1.0
-
-[node name="Tree" parent="building" unique_id=2041254754 instance=ExtResource("3_vr1i5")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3255475, 0, -8.3860655)
-
-[node name="Tree2" parent="building" unique_id=1687857117 instance=ExtResource("3_vr1i5")]
-transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, -5.5403986, 4.7683716e-07, -8.048962)
-
-[node name="Tree3" parent="building" unique_id=776368307 instance=ExtResource("3_vr1i5")]
-transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, -12.533157, 4.7683716e-07, 15.807338)
-
-[node name="Tree4" parent="building" unique_id=1108398341 instance=ExtResource("3_vr1i5")]
-transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, -10.989821, 2.3841858e-06, -17.05888)
-
-[node name="Tree5" parent="building" unique_id=306029947 instance=ExtResource("3_vr1i5")]
-transform = Transform3D(-0.9894026, 0, 0.14519827, 0, 1, 0, -0.14519827, 0, -0.9894026, 3.4116602, 1.4305115e-06, -0.2489307)
-
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.80217713, 0.13436648, -0.5817697, 0.4588695, -0.7621501, 0.45668873, -0.38203216, -0.633302, -0.67303705, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.06418419, 0.80736053, -0.5865575, 0.7145723, 0.37311047, 0.5917559, 0.6966109, -0.45711917, -0.5529697, 5.7162585, 1.8341535, -3.6544616)
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -642,8 +104,8 @@ directional_shadow_blend_splits = true
 directional_shadow_fade_start = 0.95
 directional_shadow_max_distance = 400.0
 directional_shadow_pancake_size = 0.0
-script = ExtResource("2_vr1i5")
-rotation_speed = Vector3(5, 0, 0)
+script = SubResource("GDScript_2nij2")
+rotation_speed = Vector3(0, 0, 0)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1388189320]
 environment = SubResource("Environment_xekms")
@@ -653,48 +115,19 @@ compositor = SubResource("Compositor_n8ajh")
 transform = Transform3D(-0.98710275, 0.022279916, -0.15853001, 0, 0.9902681, 0.13917297, 0.16008796, 0.13737802, -0.9774964, -2.9853, 2.8372538, -0.235322)
 script = ExtResource("2_48kf0")
 
-[node name="ssrt_sp" type="MeshInstance3D" parent="Camera3D-free-look" unique_id=314010324]
-transform = Transform3D(-1.9740992, 0.001253994, 0.3208341, 0.04593497, 1.9804952, 0.2749007, -0.3175296, 0.2787094, -1.9548749, 3.3990006, -1.9869454, -0.7234044)
-visible = false
-material_override = SubResource("ShaderMaterial_07lwh")
-cast_shadow = 0
-extra_cull_margin = 16384.0
-lod_bias = 17.762
-gi_mode = 0
-gi_lightmap_texel_scale = 0.01
-mesh = SubResource("QuadMesh_w72ga")
-skeleton = NodePath("../..")
-
 [node name="UnlitAlbedoSourceSubViewport" type="SubViewport" parent="." unique_id=731899120 node_paths=PackedStringArray("camera_source")]
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
-scaling_3d_scale = 1.0
-size = Vector2i(350, 212)
+size = Vector2i(1163, 942)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(-0.7276997, -0.392967, 0.5621656, 0, 0.81960773, 0.5729251, -0.685896, 0.41691738, -0.5964283, 13.911751, 23.68963, -23.303614)
+transform = Transform3D(0.9837266, 0.11295952, -0.13972148, 0, 0.7776485, 0.6286993, 0.17967178, -0.6184682, 0.76499355, -30.007006, 85.017166, 105.59049)
 visible = false
 compositor = SubResource("Compositor_rpuu0")
 fov = 70.01
 size = 11.230892
-
-[node name="Hud" type="CanvasLayer" parent="." unique_id=926596220]
-
-[node name="FpsCounter" type="Label" parent="Hud" unique_id=1668790363]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -240.0
-offset_top = 10.0
-offset_right = -16.0
-offset_bottom = 46.0
-grow_horizontal = 0
-theme_override_colors/font_color = Color(0.07, 0.07, 0.07, 0.85)
-theme_override_font_sizes/font_size = 22
-horizontal_alignment = 2
-script = ExtResource("11_rpuu0")
