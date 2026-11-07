@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dosrxpmdwnqjs"
+path="res://.godot/imported/mix_ema.glsl-40ee7180d583b88cb57b55b787b6cb01.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_ema.glsl"
+dest_files=["res://.godot/imported/mix_ema.glsl-40ee7180d583b88cb57b55b787b6cb01.res"]
+
+[params]
+

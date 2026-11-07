@@ -61,6 +61,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Probe acceptance window in ray step lengths (step-relative, not absolute world units).
 @export var z_thickness: float = 0.5:
 	set(value):
 		if z_thickness == value:
@@ -129,3 +130,80 @@ signal s_changed
 			return
 		blur_plane_treshold = value
 		s_changed.emit()
+
+
+@export_category("Temporal settings")
+enum AccumulationMode { EMA, BOX8, BOX16F }
+
+## Accumulation mode. EMA: exponential, ~N-frame window. BOX8: exact flat N-frame
+## average in RGBA8 (RGB stored *1/8, clips above 8, cheapest VRAM). BOX16F: the same,
+## full RGBA16F precision (most VRAM).
+@export var accumulation_mode: AccumulationMode = AccumulationMode.EMA:
+	set(value):
+		if accumulation_mode == value:
+			return
+		accumulation_mode = value
+		s_changed.emit()
+
+
+## Temporal window (frames). EMA: weight = 1 - 0.05^(1/N) (~5% of the old value remains after N frames).
+## BOX: exact flat average of the last N frames. 1 = off.
+@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+	set(value):
+		#Clamp to the current max (saved values may predate it).
+		value = clampi(value, 1, 64)
+		if accumulation_frames == value:
+			return
+		accumulation_frames = value
+		s_changed.emit()
+
+
+## Reproject the history read to the pixel's previous-frame position. Off = read at the same pixel (ghosts under camera motion).
+@export var reprojection_enabled: bool = true:
+	set(value):
+		if reprojection_enabled == value:
+			return
+		reprojection_enabled = value
+		s_changed.emit()
+
+
+## Disocclusion revalidation: reject stored history whose surface depth differs from the
+## current depth by more than this relative amount. 0 = disabled. Higher = more ghosting,
+## lower = more resets/shimmer.
+@export_range(0.0, 0.5, 0.001) var reproj_depth_threshold: float = 0.05:
+	set(value):
+		if reproj_depth_threshold == value:
+			return
+		reproj_depth_threshold = value
+		s_changed.emit()
+
+
+## Filter the history read at the fractional reprojection position (4-tap bilinear).
+## Off = nearest texel: crisper, but sub-texel motion quantizes to 0/1-texel jumps.
+@export var bilinear_reprojection: bool = true:
+	set(value):
+		if bilinear_reprojection == value:
+			return
+		bilinear_reprojection = value
+		s_changed.emit()
+
+
+@export_category("Debug")
+enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO }
+
+## Debug overlay replacing the effect output. MOTION_VECTORS: black = static, R/G = x/y motion
+## (64 px = full range), red = previous position off-screen. UNLIT_ALBEDO: the unlit albedo the
+## GI bounce modulates by (lit-color fallback where no source viewport is wired up). Skips trace/blur/mix.
+@export var debug_view: DebugView = DebugView.NONE:
+	set(value):
+		if debug_view == value:
+			return
+		debug_view = value
+		s_changed.emit()
+
+
+## History bytes/pixel for the VRAM estimate: BOX8 = 4 (RGBA8), EMA/BOX16F = 8 (RGBA16F).
+func bytes_per_pixel() -> int:
+	if accumulation_mode == AccumulationMode.BOX8:
+		return 4
+	return 8

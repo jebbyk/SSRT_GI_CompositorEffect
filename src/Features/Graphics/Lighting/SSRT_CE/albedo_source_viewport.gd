@@ -36,11 +36,20 @@ func _ready() -> void:
 	# is unlit.
 	debug_draw = Viewport.DEBUG_DRAW_UNSHADED
 	use_hdr_2d = true
+	#The CE samples this target 1:1 at the CE raster; own 3D scaling would
+	#downsample it (4.7 has no scaling OFF; scale 1.0 = full res).
+	scaling_3d_scale = 1.0
 
 	if size.x == 0 or size.y == 0:
 		size = _target_size()
 
 	_camera_target = _find_or_create_camera()
+	#Compositor resolution is per camera/scenario (WorldEnvironment), not per viewport:
+	#without this the world's effects would run on this SubViewport too (its MSAA-less
+	#depth layer then fails scene-set creation with STORAGE_BIT errors). The empty
+	#compositor shadows the world one, so no effect callbacks fire here.
+	if not _camera_target.compositor:
+		_camera_target.compositor = Compositor.new()
 	_update_handoff()
 
 

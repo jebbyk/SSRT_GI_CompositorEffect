@@ -103,15 +103,7 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 	//return vec4(p_normal_roughness.xyz, 1.0);
 }
 
-float get_linear_depth(ivec2 uv)
-{
-	float depth = imageLoad(depth_image, uv).r;
-	vec3 ndc = vec3(uv * 2.0 - 1.0, depth);
-	vec4 view = scene.data.inv_projection_matrix * vec4(ndc, 1.0);
-	view.xyz /= view.w;
-
-	return -view.z;
-}
+#include "includes/common.glsl"
 
 //The code we want to execute in each invocation
 void main() {
@@ -167,13 +159,14 @@ void main() {
 			vec2 newUvCoord = probePosition.xy / probePosition.z + vec2(0.5);
 
 			if(!inScreen(ivec2(newUvCoord * vec2(size)), size)) {
-				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity;
+				//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
+				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
 				break;
 			}
 
 			float probeTestDepth = get_linear_depth(ivec2(newUvCoord * vec2(size)));//slightly differs
 
-			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + settings.data.z_thickness) {
+			if(probePosition.z > probeTestDepth && probePosition.z < probeTestDepth + settings.data.z_thickness * stepLength) {
 				GI.a += 1.0;
 				vec3 probeTestNormal = normal_roughness_compatibility(
 					imageLoad(normal_roughness_image, ivec2(newUvCoord * vec2(size)))

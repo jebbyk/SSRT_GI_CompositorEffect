@@ -1,3 +1,4 @@
+@tool
 ## Slowly rotates the node around its local axes.
 ## Speed is in degrees per second per axis, so rotation is independent of FPS.
 ## A zero component on an axis leaves that axis untouched.

@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://c65dlc0ye08b8"
+path="res://.godot/imported/mix_box16f.glsl-941481671e13eb5f476e1902843cd257.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box16f.glsl"
+dest_files=["res://.godot/imported/mix_box16f.glsl-941481671e13eb5f476e1902843cd257.res"]
+
+[params]
+
