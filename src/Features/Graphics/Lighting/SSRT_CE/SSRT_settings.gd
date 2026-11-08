@@ -5,7 +5,7 @@ extends Resource
 signal s_changed
 
 @export_category("Trace settings")
-@export_range(1, 1024, 1) var rays_amount: int = 4:
+@export_range(1, 1024, 1) var rays_amount: int = 8:
 	set(value):
 		if rays_amount == value:
 			return
@@ -13,7 +13,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
-@export_range(1, 512, 1) var steps_per_ray: int = 32:
+@export_range(1, 512, 1) var steps_per_ray: int = 64:
 	set(value):
 		if steps_per_ray == value:
 			return
@@ -37,7 +37,7 @@ signal s_changed
 		s_changed.emit()
 
 
-@export_range(0.0, 100.0, 0.01) var bounce_intensity: float = 1.0:
+@export_range(0.0, 100.0, 0.01) var bounce_intensity: float = 0.5:
 	set(value):
 		if bounce_intensity == value:
 			return
@@ -45,7 +45,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
-@export_range(0.0, 100.0, 0.01) var occlusion_intensity: float = 1.0:
+@export_range(0.0, 100.0, 0.01) var occlusion_intensity: float = 5.0:
 	set(value):
 		if occlusion_intensity == value:
 			return
@@ -53,7 +53,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
-@export var back_face_lighting: bool = false:
+@export var back_face_lighting: bool = true:
 	set(value):
 		if back_face_lighting == value:
 			return
@@ -62,7 +62,7 @@ signal s_changed
 		
 		
 ## Probe acceptance window in ray step lengths (step-relative, not absolute world units).
-@export var z_thickness: float = 0.5:
+@export var z_thickness: float = 10.0:
 	set(value):
 		if z_thickness == value:
 			return
@@ -124,7 +124,7 @@ signal s_changed
 		blur_normal_treshold = value
 		s_changed.emit()
 
-@export_range(0.0, 1.0, 0.001) var blur_plane_treshold: float = 0.5:
+@export_range(0.0, 1.0, 0.001) var blur_plane_treshold: float = 0.35:
 	set(value):
 		if blur_plane_treshold == value:
 			return
@@ -148,7 +148,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 
 ## Temporal window (frames). EMA: weight = 1 - 0.05^(1/N) (~5% of the old value remains after N frames).
 ## BOX: exact flat average of the last N frames. 1 = off.
-@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 1:
+@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 64:
 	set(value):
 		#Clamp to the current max (saved values may predate it).
 		value = clampi(value, 1, 64)

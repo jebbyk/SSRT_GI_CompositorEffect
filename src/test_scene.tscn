@@ -60,13 +60,6 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-steps_per_ray = 64
-bounce_intensity = 0.5
-occlusion_intensity = 5.0
-z_thickness = 8.0
-blur_steps = 2
-blur_plane_treshold = 0.35
-accumulation_frames = 64
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -133,7 +126,7 @@ size = Vector3(30, 8, 0.5)
 [node name="Node3D" type="Node3D" unique_id=41970100]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.064184174, 0.9486646, 0.3097031, 0.7145723, -0.26032484, 0.6493208, 0.6966109, 0.17962913, -0.69459814, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.064184174, 0.9486644, 0.3097031, 0.7145723, -0.26032478, 0.6493208, 0.6966109, 0.1796291, -0.69459814, 5.7162585, 1.8341535, -3.6544616)
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
@@ -160,44 +153,44 @@ script = ExtResource("2_48kf0")
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
-size = Vector2i(1350, 848)
+size = Vector2i(1387, 942)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
 
 [node name="Camera3D-albedo-source" type="Camera3D" parent="UnlitAlbedoSourceSubViewport" unique_id=1930777123]
-transform = Transform3D(0.23154928, 0.34393826, -0.9099953, 0, 0.93541694, 0.35354653, 0.9728232, -0.08186344, 0.21659511, -9.697714, 3.1749682, 3.8574834)
+transform = Transform3D(0.13288811, 0.19683035, -0.97139007, 0, 0.98008233, 0.19859166, 0.99113107, -0.026390467, 0.13024129, -7.5239363, 3.2531106, 5.381874)
 visible = false
 compositor = SubResource("Compositor_rpuu0")
 fov = 70.01
 size = 11.230892
 
-[node name="Floor" type="MeshInstance3D" parent="." unique_id=1700000001]
+[node name="Shapes" type="MeshInstance3D" parent="." unique_id=1700000001]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 7)
 mesh = SubResource("Mesh_floor")
 
-[node name="RedBox" type="MeshInstance3D" parent="Floor" unique_id=1700000003]
+[node name="RedBox" type="MeshInstance3D" parent="Shapes" unique_id=1700000003]
 transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, -2, 1.6721473, 2)
 mesh = SubResource("Mesh_box_red")
 skeleton = NodePath("../..")
 
-[node name="BlueBox" type="MeshInstance3D" parent="Floor" unique_id=1700000004]
+[node name="BlueBox" type="MeshInstance3D" parent="Shapes" unique_id=1700000004]
 transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 2, 1.6721473, 2)
 mesh = SubResource("Mesh_box_blue")
 skeleton = NodePath("../..")
 
-[node name="BlueColumn" type="MeshInstance3D" parent="Floor" unique_id=1700000005]
+[node name="BlueColumn" type="MeshInstance3D" parent="Shapes" unique_id=1700000005]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0.99328804, -0.67793655)
 mesh = SubResource("Mesh_column_blue")
 skeleton = NodePath("../..")
 
-[node name="RedColumn" type="MeshInstance3D" parent="Floor" unique_id=1700000006]
+[node name="RedColumn" type="MeshInstance3D" parent="Shapes" unique_id=1700000006]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0.99328804, -0.67793655)
 mesh = SubResource("Mesh_column_red")
 skeleton = NodePath("../..")
 
-[node name="Wall" type="MeshInstance3D" parent="Floor" unique_id=1700000002]
+[node name="Wall" type="MeshInstance3D" parent="Shapes" unique_id=1700000002]
 transform = Transform3D(1, 0, 0, 0, 0.6137241, 0, 0, 0, 1, 0, 2.502009, -5.946562)
 mesh = SubResource("Mesh_wall")
 skeleton = NodePath("../..")
