@@ -1,11 +1,13 @@
-[gd_resource type="StandardMaterial3D" load_steps=3 format=3 uid="uid://cbufshjju7lvd"]
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://cbufshjju7lvd"]
 
-[ext_resource type="Texture2D" path="res://Textures/Miscellaneous/Shopsign_Pharmacy_Emissive_BaseColor.dds" id="1_5feue"]
-[ext_resource type="Texture2D" path="res://Textures/Miscellaneous/Shopsign_Pharmacy_Emissive_Emissive.dds" id="2_c2ri1"]
+[ext_resource type="Texture2D" uid="uid://b2727f0ipbpi4" path="res://Textures/Miscellaneous/Shopsign_Pharmacy_Emissive_BaseColor.dds" id="1_5feue"]
+[ext_resource type="Texture2D" uid="uid://bxeugp26wadsy" path="res://Textures/Miscellaneous/Shopsign_Pharmacy_Emissive_Emissive.dds" id="2_c2ri1"]
 
 [resource]
 cull_mode = 2
 albedo_texture = ExtResource("1_5feue")
 roughness = 0.73
 emission_enabled = true
+emission_energy_multiplier = 16.0
+emission_intensity = 2000.0
 emission_texture = ExtResource("2_c2ri1")

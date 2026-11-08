@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://dthil5porgf21"]
+[gd_scene format=3 uid="uid://dthil5porgf21"]
 
 [ext_resource type="PackedScene" uid="uid://i5avi0l6gm42" path="res://Meshes/Section02/S2B1.glb" id="1_tr6dy"]
 [ext_resource type="Material" uid="uid://cjjq6f1e35pt3" path="res://Materials/Wood/Doors.tres" id="2_drlko"]
@@ -19,76 +19,76 @@
 [ext_resource type="Material" uid="uid://dfcnpxsv3ak8d" path="res://Materials/Lights/Emissive_StreeLight.tres" id="12_8j2jh"]
 [ext_resource type="Material" uid="uid://i06guesrovca" path="res://Materials/Stone/Concrete2.tres" id="12_301m3"]
 [ext_resource type="Material" uid="uid://bs54qrhaga2nh" path="res://Materials/Metal/Black_Metal.tres" id="13_usvim"]
-[ext_resource type="Material" uid="uid://cubayex8gukre" path="res://Materials/Glass/Windows_Glass.tres" id="14_tpyel"]
 
-[node name="S2B1" instance=ExtResource("1_tr6dy")]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1dsrd"]
+emission_enabled = true
+emission_energy_multiplier = 16.0
 
-[node name="Bistro_Research_Exterior_Paris_Aerial_01C_4057" parent="." index="0"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q8j3y"]
+emission_enabled = true
+emission_energy_multiplier = 16.0
+
+[node name="S2B1" unique_id=1474736975 instance=ExtResource("1_tr6dy")]
+
+[node name="Bistro_Research_Exterior_Paris_Aerial_01C_4057" parent="." index="0" unique_id=1033197647]
 surface_material_override/0 = ExtResource("2_pk6pp")
 surface_material_override/1 = ExtResource("2_pk6pp")
 surface_material_override/2 = ExtResource("2_pk6pp")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4905" parent="." index="1"]
+[node name="Bistro_Research_Exterior_paris_building_02_4905" parent="." index="1" unique_id=2002143806]
 surface_material_override/0 = ExtResource("2_drlko")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4905001" parent="." index="2"]
-surface_material_override/0 = ExtResource("2_drlko")
-
-[node name="Bistro_Research_Exterior_paris_building_02_4907" parent="." index="3"]
+[node name="Bistro_Research_Exterior_paris_building_02_4907" parent="." index="3" unique_id=422143211]
 surface_material_override/0 = ExtResource("3_ngd6g")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4909" parent="." index="4"]
+[node name="Bistro_Research_Exterior_paris_building_02_4909" parent="." index="4" unique_id=838082397]
 surface_material_override/0 = ExtResource("4_bpgub")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4911" parent="." index="5"]
+[node name="Bistro_Research_Exterior_paris_building_02_4911" parent="." index="5" unique_id=1861813969]
 surface_material_override/0 = ExtResource("5_ntede")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4913" parent="." index="6"]
+[node name="Bistro_Research_Exterior_paris_building_02_4913" parent="." index="6" unique_id=1637851696]
 surface_material_override/0 = ExtResource("6_h2uvs")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4915" parent="." index="7"]
+[node name="Bistro_Research_Exterior_paris_building_02_4915" parent="." index="7" unique_id=1408267575]
 surface_material_override/0 = ExtResource("7_xaxdv")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4919" parent="." index="8"]
+[node name="Bistro_Research_Exterior_paris_building_02_4919" parent="." index="8" unique_id=2131602396]
 surface_material_override/0 = ExtResource("8_qptmo")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4921" parent="." index="9"]
+[node name="Bistro_Research_Exterior_paris_building_02_4921" parent="." index="9" unique_id=118718532]
 surface_material_override/0 = ExtResource("3_ngd6g")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4925" parent="." index="10"]
+[node name="Bistro_Research_Exterior_paris_building_02_4925" parent="." index="10" unique_id=243479804]
 surface_material_override/0 = ExtResource("9_kv3e2")
 
-[node name="Bistro_Research_Exterior_paris_building_02_4925001" parent="." index="11"]
-surface_material_override/0 = ExtResource("9_kv3e2")
-
-[node name="Bistro_Research_Exterior_Paris_Chimney_01A1_5953" parent="." index="12"]
+[node name="Bistro_Research_Exterior_Paris_Chimney_01A1_5953" parent="." index="12" unique_id=694178431]
 surface_material_override/0 = ExtResource("10_n33cf")
 surface_material_override/1 = ExtResource("11_bcbla")
 
-[node name="Bistro_Research_Exterior_Paris_Chimney_02C_5975" parent="." index="13"]
+[node name="Bistro_Research_Exterior_Paris_Chimney_02C_5975" parent="." index="13" unique_id=1660811730]
 surface_material_override/0 = ExtResource("10_n33cf")
 surface_material_override/1 = ExtResource("11_lcuws")
 surface_material_override/2 = ExtResource("12_301m3")
 surface_material_override/3 = ExtResource("13_usvim")
 
-[node name="Bistro_Research_Exterior_Paris_ElectricBox_5977" parent="." index="14"]
+[node name="Bistro_Research_Exterior_Paris_ElectricBox_5977" parent="." index="14" unique_id=1203374006]
 surface_material_override/0 = ExtResource("10_57jch")
 
-[node name="Bistro_Research_Exterior_Paris_ElectricBox_5991" parent="." index="15"]
+[node name="Bistro_Research_Exterior_Paris_ElectricBox_5991" parent="." index="15" unique_id=1846701519]
 surface_material_override/0 = ExtResource("10_57jch")
 
-[node name="Bistro_Research_Exterior_Paris_StreetLight_01B___15__6295" parent="." index="16"]
+[node name="Bistro_Research_Exterior_Paris_StreetLight_01B___15__6295" parent="." index="16" unique_id=1221014081]
 surface_material_override/0 = ExtResource("10_n42nu")
+surface_material_override/1 = SubResource("StandardMaterial3D_1dsrd")
+surface_material_override/2 = SubResource("StandardMaterial3D_q8j3y")
 
-[node name="Bistro_Research_Exterior_Paris_StreetLight_Glass_01B___15__6351" parent="." index="17"]
+[node name="Bistro_Research_Exterior_Paris_StreetLight_Glass_01B___15__6351" parent="." index="17" unique_id=269403361]
 gi_mode = 0
 surface_material_override/0 = ExtResource("12_8j2jh")
 
-[node name="Bistro_Research_Exterior_Paris_TrafficSign_01A1_6513" parent="." index="18"]
+[node name="Bistro_Research_Exterior_Paris_TrafficSign_01A1_6513" parent="." index="18" unique_id=504760946]
 surface_material_override/0 = ExtResource("11_qscm4")
 
-[node name="Bistro_Research_Exterior_Paris_TrafficSign_01A_6511" parent="." index="19"]
+[node name="Bistro_Research_Exterior_Paris_TrafficSign_01A_6511" parent="." index="19" unique_id=498087696]
 surface_material_override/0 = ExtResource("11_qscm4")
-
-[node name="S2B1Glass002" parent="." index="20"]
-surface_material_override/0 = ExtResource("14_tpyel")
