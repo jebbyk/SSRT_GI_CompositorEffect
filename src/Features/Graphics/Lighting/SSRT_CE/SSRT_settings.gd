@@ -53,7 +53,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
-@export var back_face_lighting: bool = true:
+@export var back_face_lighting: bool = false:
 	set(value):
 		if back_face_lighting == value:
 			return
@@ -110,7 +110,7 @@ signal s_changed
 		blur_kernel_size = value
 		s_changed.emit()
 		
-@export_range(0, 4, 1) var blur_steps: int = 1:
+@export_range(0, 4, 1) var blur_steps: int = 2:
 	set(value):
 		if blur_steps == value:
 			return
@@ -148,7 +148,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 
 ## Temporal window (frames). EMA: weight = 1 - 0.05^(1/N) (~5% of the old value remains after N frames).
 ## BOX: exact flat average of the last N frames. 1 = off.
-@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 64:
+@export_range(1, 64, 1, "Temporal window (frames): EMA weight = 1 - 0.05^(1/N) (~95% response after N frames); BOX8/BOX16F = exact flat average of the last N frames (history = N frames of VRAM). Higher = smoother but more ghosting. 1 = off.") var accumulation_frames: int = 20:
 	set(value):
 		#Clamp to the current max (saved values may predate it).
 		value = clampi(value, 1, 64)
