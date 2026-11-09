@@ -17,14 +17,10 @@ extends BaseCompositorEffect
 #TODO use multiple cameras setup to capture offscreen things (?)
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
-const TRACE_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/trace.glsl"
-const BLUR_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/blur.glsl"
-const MIX_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix.glsl"
-const MIX_EMA_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_ema.glsl"
-const MIX_BOX8_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box8.glsl"
-const MIX_BOX16F_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/mix_box16f.glsl"
-const DEBUG_MV_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_mv.glsl"
-const DEBUG_ALBEDO_SHADER_PATH := "res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_albedo.glsl"
+##Shaders live next to this script, so the whole folder can be dropped anywhere in the project.
+##(get_script() is unavailable at parse time, hence a function instead of consts.)
+func _shader(p_name: String) -> String:
+	return get_script().resource_path.get_base_dir().path_join("shaders/").path_join(p_name)
 
 #Debug MV pass (set 0): engine velocity texture, bound as a sampler.
 const DEBUG_MV_VELOCITY_BINDING := 3
@@ -925,12 +921,12 @@ func make_settings_dirty() -> void:
 	
 func _recompile_shaders() -> void:
 	#print("from: SSRT_CE::_recompile_shaders()")
-	trace_shader = create_shader(TRACE_SHADER_PATH)
-	blur_shader = create_shader(BLUR_SHADER_PATH)
-	mix_shader = create_shader(MIX_SHADER_PATH)
-	mix_ema_shader = create_shader(MIX_EMA_SHADER_PATH)
-	mix_box8_shader = create_shader(MIX_BOX8_SHADER_PATH)
-	mix_box16f_shader = create_shader(MIX_BOX16F_SHADER_PATH)
-	debug_mv_shader = create_shader(DEBUG_MV_SHADER_PATH)
-	debug_albedo_shader = create_shader(DEBUG_ALBEDO_SHADER_PATH)
+	trace_shader = create_shader(_shader("trace.glsl"))
+	blur_shader = create_shader(_shader("blur.glsl"))
+	mix_shader = create_shader(_shader("mix.glsl"))
+	mix_ema_shader = create_shader(_shader("mix_ema.glsl"))
+	mix_box8_shader = create_shader(_shader("mix_box8.glsl"))
+	mix_box16f_shader = create_shader(_shader("mix_box16f.glsl"))
+	debug_mv_shader = create_shader(_shader("debug_mv.glsl"))
+	debug_albedo_shader = create_shader(_shader("debug_albedo.glsl"))
 	shaders_dirty = true
