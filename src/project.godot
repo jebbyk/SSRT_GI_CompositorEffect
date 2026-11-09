@@ -46,7 +46,6 @@ environment/ssil/half_size=false
 environment/ssil/adaptive_target=1.0
 environment/ssil/fadeout_from=0.0
 environment/ssil/fadeout_to=65536.0
-anti_aliasing/quality/msaa_3d=1
 anti_aliasing/screen_space_roughness_limiter/enabled=false
 scaling_3d/mode=5
 scaling_3d/mode.ios=5
