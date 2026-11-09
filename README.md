@@ -23,5 +23,3 @@ Godot 4.7.x, Forward+.
 6. Create one new Resource with script `albedo_handoff.gd` and assign it to BOTH the effect's `albedo_handoff` and the SubViewport's `albedo_handoff`.
 7. On the SubViewport, set `camera_source` to your main camera.
 8. Run the scene (F5).
-
-All parameters are tunable in the Inspector on the `settings` resource. A working reference scene: `src/demo/lumberyard_demo.tscn` (branch `lumberyard-demo`).
