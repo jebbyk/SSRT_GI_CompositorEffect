@@ -347,13 +347,10 @@ func run_compute_shader(
 			p_push_constant := PackedFloat32Array(),
 		) -> void:
 	# Resolve and validate the uniform sets before recording any commands.
-	# A set is invalid when it cannot be created — most commonly because one
-	# of its images lacks TEXTURE_USAGE_STORAGE_BIT: the scene's depth layer
-	# is an R32 storage image only when MSAA is on (SubViewports default to
-	# MSAA off; only the root Window inherits the project default), so an
-	# MSAA-less viewport gets a D32 depth layer and no valid set. Dispatching
-	# there with an unbound set would spam "Uniforms were never supplied for
-	# set (N)" every frame, so the pass is skipped.
+	# A set is invalid when it cannot be created (e.g. a texture bound without
+	# the usage bits its binding needs). Dispatching with an unbound set would
+	# spam "Uniforms were never supplied for set (N)" every frame, so the pass
+	# is skipped and the failure memoized per unique set shape.
 	var set_rids : Array[RID] = []
 	for idx in p_uniform_sets.size():
 		var uniforms : Array = p_uniform_sets[idx]
@@ -389,9 +386,8 @@ func _report_skipped_pass(p_label : String, p_set : int) -> void:
 	push_warning(
 		(
 			"from: BaseCompositorEffect::run_compute_shader(). "
-			+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created because one of its "
-			+ "images lacks TEXTURE_USAGE_STORAGE_BIT (typically the depth layer of a viewport without MSAA, "
-			+ "e.g. a plain SubViewport sharing the world). The effect stays disabled on that viewport; this "
+			+ "Pass '%s' is skipped on this viewport: uniform set %d could not be created (a texture is bound "
+			+ "without the usage bits its binding needs). The effect stays disabled on that viewport; this "
 			+ "warning is printed once."
 		) % [p_label, p_set]
 	)
@@ -417,12 +413,6 @@ func get_color_image_uniform(p_view : int) -> RDUniform:
 			COLOR_IMAGE_BINDING,
 		)
 	return color_image_uniform
-	
-
-func get_depth_image_uniform(p_view : int) -> RDUniform:
-	var depth_image : RID = render_scene_buffers.get_depth_layer(p_view)
-	var depth_image_uniform: RDUniform = get_image_uniform(depth_image, DEPTH_SAMPLER_BINDING)
-	return depth_image_uniform
 	
 
 func get_normal_image_uniform() -> RDUniform:
@@ -459,8 +449,7 @@ func get_scene_uniform_set(p_view : int) -> Array[RDUniform]:
 	return [
 			get_scene_data_ubo(),
 			get_color_image_uniform(p_view),
-			#TODO there was samplers in the original. Not images. And they not workign idk why
-			get_depth_image_uniform(p_view),
+			get_depth_sampler_uniform(p_view, nearest_sampler),
 			get_normal_image_uniform(),
 	]
 

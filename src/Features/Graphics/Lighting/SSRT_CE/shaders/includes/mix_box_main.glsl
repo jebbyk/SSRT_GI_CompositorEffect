@@ -24,7 +24,7 @@ void main() {
 	//Reprojection on: each slot is shifted into the current frame's screen space
 	//(reads at prev_px, writes at uv), so all slices track the current point.
 	//Reprojection off: plain per-uv box average.
-	float raw_depth = imageLoad(depth_image, uv).r;
+	float raw_depth = texture(depth_image, uv).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	vec2 p = vec2(uv) + 0.5;
 	vec2 prev_px = p;

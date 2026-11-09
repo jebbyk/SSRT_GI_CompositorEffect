@@ -10,7 +10,7 @@ layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 	SceneData prev_data;
 } scene;
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
-layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
+layout(set = 0, binding = 2) uniform sampler2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 //Engine velocity buffer: per-object screen-space delta in UV units; preferred over the camera-only path.
 layout(set = 0, binding = 4) uniform sampler2D velocity_tex;

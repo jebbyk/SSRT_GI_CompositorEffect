@@ -15,7 +15,7 @@ layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 	SceneData prev_data;
 } scene;
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
-layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
+layout(set = 0, binding = 2) uniform sampler2D depth_image;
 layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 //Engine velocity buffer: per-object screen-space delta in UV units; preferred over the camera-only path.
 layout(set = 0, binding = 4) uniform sampler2D velocity_tex;
@@ -67,7 +67,7 @@ void main() {
 	//Reprojection: read at the world point's previous-frame position, write at uv into the
 	//other ping-pong slot, so shifted reads in other invocations never race this write
 	//(a barrier can't span invocations).
-	float raw_depth = imageLoad(depth_image, uv).r;
+	float raw_depth = texture(depth_image, uv).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	vec2 prev_px = vec2(uv) + 0.5;
 	float history_valid = params.history_valid;

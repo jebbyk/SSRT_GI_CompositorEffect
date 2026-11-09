@@ -45,9 +45,8 @@ func _ready() -> void:
 
 	_camera_target = _find_or_create_camera()
 	#Compositor resolution is per camera/scenario (WorldEnvironment), not per viewport:
-	#without this the world's effects would run on this SubViewport too (its MSAA-less
-	#depth layer then fails scene-set creation with STORAGE_BIT errors). The empty
-	#compositor shadows the world one, so no effect callbacks fire here.
+	#without this the world's effects would run on this albedo-source SubViewport too.
+	#The empty compositor shadows the world one, so no effect callbacks fire here.
 	if not _camera_target.compositor:
 		_camera_target.compositor = Compositor.new()
 	_update_handoff()

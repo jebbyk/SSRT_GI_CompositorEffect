@@ -13,7 +13,7 @@ layout(set = 0, binding = 0, std140) uniform SceneDataBlock {
 	SceneData prev_data;
 } scene;
 layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
-layout(rgba16f, set = 0, binding = 2) uniform image2D depth_image;
+layout(set = 0, binding = 2) uniform sampler2D depth_image;
 layout(set = 0, binding = 3) uniform sampler2D velocity_tex;
 
 layout(push_constant, std430) uniform Params {
@@ -55,7 +55,7 @@ void main() {
 	}
 
 	//Unwritten pixel: camera-only fallback (the sentinel makes get_reprojected_px skip the velocity path).
-	float raw_depth = imageLoad(depth_image, uv).r;
+	float raw_depth = texture(depth_image, uv).r;
 	vec2 prev_px;
 	bool in_bounds;
 	float d_exp;

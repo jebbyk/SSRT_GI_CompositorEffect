@@ -16,13 +16,14 @@ Screen Space Global Illumination Compositor Effect for Godot projects
 Godot 4.7.x, Forward+.
 
 1. Copy the `SSRT_CE` folder into your project (it works in any location).
-2. In Project Settings, enable MSAA (`rendering/anti_aliasing/quality/msaa_3d` = 2x or 4x).
-3. In your scene, add a `Compositor` node and attach it to `WorldEnvironment.compositor` (or `Camera3D.compositor`).
-4. On the `Compositor`, add a `CompositorEffect` and set its script to `SSRT_CE.gd`.
-5. Set the effect's `settings` to a new Resource with script `SSRT_settings.gd`.
-6. Add a new `SubViewport` node with script `albedo_source_viewport.gd`.
-7. Create one new Resource with script `albedo_handoff.gd` and assign it to BOTH the effect's `albedo_handoff` and the SubViewport's `albedo_handoff`.
-8. On the SubViewport, set `camera_source` to your main camera.
-9. Run the scene (F5).
+2. In your scene, add a `Compositor` node and attach it to `WorldEnvironment.compositor` (or `Camera3D.compositor`).
+3. On the `Compositor`, add a `CompositorEffect` and set its script to `SSRT_CE.gd`.
+4. Set the effect's `settings` to a new Resource with script `SSRT_settings.gd`.
+5. Add a new `SubViewport` node with script `albedo_source_viewport.gd`.
+6. Create one new Resource with script `albedo_handoff.gd` and assign it to BOTH the effect's `albedo_handoff` and the SubViewport's `albedo_handoff`.
+7. On the SubViewport, set `camera_source` to your main camera.
+8. Run the scene (F5).
+
+MSAA is optional — the effect reads scene depth as a sampler, so it works with MSAA on or off. Enable MSAA (`rendering/anti_aliasing/quality/msaa_3d`) only if you want edge antialiasing.
 
 All parameters are tunable in the Inspector on the `settings` resource. A working reference scene: `src/demo/lumberyard_demo.tscn` (branch `lumberyard-demo`).
