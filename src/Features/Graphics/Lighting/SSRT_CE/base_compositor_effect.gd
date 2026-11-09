@@ -3,6 +3,7 @@ class_name BaseCompositorEffect
 extends CompositorEffect
 
 @export_subgroup("Debug")
+## Prints a log line whenever the effect's internal buffers are resized.
 @export var print_buffer_resize : bool = false
 ## Use to troubleshoot errors from freeing invalid RIDs.
 @export var print_freed_rids : bool = false

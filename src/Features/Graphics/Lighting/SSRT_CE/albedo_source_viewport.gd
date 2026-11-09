@@ -19,9 +19,9 @@ extends SubViewport
 ##   render_size is last-writer-wins, so the single albedo map (mirrored from
 ##   the main view's camera) may not match the other views' rasters exactly.
 
-# Camera whose transform is mirrored into this viewport every frame (in-game).
+## Camera whose transform/FOV/near/far is mirrored into this viewport every frame in-game (the editor preview mirrors the editor viewport camera instead).
 @export var camera_source: Camera3D
-# Handoff resource shared with SSRT_CE (see albedo_handoff.gd).
+## Handoff resource shared with SSRT_CE (see albedo_handoff.gd); wiring it on both nodes enables the unlit-albedo bounce path.
 @export var albedo_handoff: Resource
 
 var _camera_target: Camera3D

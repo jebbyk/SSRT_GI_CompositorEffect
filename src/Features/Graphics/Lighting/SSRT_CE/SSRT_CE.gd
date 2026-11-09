@@ -61,6 +61,7 @@ const HISTORY_DEPTH_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryDepthWrite"
 
 @export_tool_button("Recompile shaders", "Callable") var recompile_shaders_action = _recompile_shaders
 
+## The SSRTSettings resource driving every SSRT_CE parameter; changes emit s_changed and rebuild the GPU pipelines.
 @export  var settings : SSRTSettings :
 	set(value):
 		settings = value

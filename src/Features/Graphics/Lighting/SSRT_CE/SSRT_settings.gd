@@ -5,6 +5,8 @@ extends Resource
 signal s_changed
 
 @export_category("Trace settings")
+## How many random hemisphere rays are traced per pixel each frame.
+## Results are averaged, so higher = less noise at a linear cost.
 @export_range(1, 1024, 1) var rays_amount: int = 8:
 	set(value):
 		if rays_amount == value:
@@ -13,6 +15,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## How many depth probes (march steps) each ray takes while advancing.
+## Higher = more accurate hit positions, higher cost; shorter steps tighten hit detection.
 @export_range(1, 512, 1) var steps_per_ray: int = 64:
 	set(value):
 		if steps_per_ray == value:
@@ -21,6 +25,8 @@ signal s_changed
 		s_changed.emit()
 	
 		
+## Length of every ray in world units (scaled by pixel depth when depth_affect_ray_length is on).
+## Step length is this value divided by steps_per_ray, with random jitter.
 @export_range(0.0, 20.0, 0.1) var ray_length: float = 1.0:
 	set(value):
 		if ray_length == value:
@@ -29,6 +35,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Multiplies ray length by the pixel's scene depth, so rays keep the same angular reach at any distance.
+## Near geometry gets short rays, far geometry gets long ones.
 @export var depth_affect_ray_length: bool = true:
 	set(value):
 		if depth_affect_ray_length == value:
@@ -37,6 +45,8 @@ signal s_changed
 		s_changed.emit()
 
 
+## Master scale for the accumulated GI bounce color (internally x10).
+## 0 disables the color contribution; this is the "how bright is the GI" knob.
 @export_range(0.0, 100.0, 0.01) var bounce_intensity: float = 0.5:
 	set(value):
 		if bounce_intensity == value:
@@ -45,6 +55,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Scale for the ambient-occlusion term that darkens occluded surfaces (internally x0.2), independent of bounce color.
+## 0 = no AO darkening.
 @export_range(0.0, 100.0, 0.01) var occlusion_intensity: float = 5.0:
 	set(value):
 		if occlusion_intensity == value:
@@ -53,6 +65,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## When off, rays striking a surface whose normal faces away from the ray are rejected (no light, no occlusion).
+## On lets back faces contribute too — brighter, but more self-lit and leaky.
 @export var back_face_lighting: bool = false:
 	set(value):
 		if back_face_lighting == value:
@@ -61,7 +75,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
-## Probe acceptance window in ray step lengths (step-relative, not absolute world units).
+## Hit-acceptance slab in units of step length, not world units: a probe counts as a hit when it penetrates the surface by at most z_thickness x stepLength.
+## Larger = more forgiving hits on thin/grazing geometry; smaller = more false misses and holes.
 @export var z_thickness: float = 10.0:
 	set(value):
 		if z_thickness == value:
@@ -70,6 +85,8 @@ signal s_changed
 		s_changed.emit()
 		
 
+## Hit-rejection threshold (when back_face_lighting is off): probes with dot(hit normal, ray direction) above -threshold/10 are discarded.
+## I.e. hits where the surface is nearly edge-on to the ray don't count; higher = more grazing hits rejected.
 @export_range(0.0, 1.0, 0.001) var normal_treshold: float = 0.5:
 	set(value):
 		if normal_treshold == value:
@@ -78,6 +95,7 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Color added when a ray leaves the screen bounds (a "sky" miss), faking ambient light from outside the view.
 @export var sky_color: Color = Color.DEEP_SKY_BLUE:
 	set(value):
 		if sky_color == value:
@@ -86,6 +104,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Multiplier for sky_color, normalized to 0-1 internally.
+## 0 = rays missing the screen add nothing.
 @export_range(0.0, 100.0, 0.01) var sky_color_intensity: float:
 	set(value):
 		if sky_color_intensity == value:
@@ -94,6 +114,8 @@ signal s_changed
 		s_changed.emit()
 		
 		
+## Pixels whose scene depth exceeds this skip tracing entirely (no GI, no AO).
+## Culls sky/background pixels and caps the effective range.
 @export var far_plane: float = 1000.0:
 	set(value):
 		if far_plane == value:
@@ -103,6 +125,8 @@ signal s_changed
 	
 	
 @export_category("Denoise settings")
+## Tap distance in pixels of the first denoise pass (3x3 edge-aware kernel at +/-offset); each later pass triples the offset.
+## Sets the base width of the denoise pyramid.
 @export_range(1, 10, 1) var blur_kernel_size: int = 2:
 	set(value):
 		if blur_kernel_size == value:
@@ -110,6 +134,8 @@ signal s_changed
 		blur_kernel_size = value
 		s_changed.emit()
 		
+## How many sequential 3x3 edge-aware blur passes run on the trace output (offsets x3 per pass).
+## More = smoother but blurrier; 0 = no denoise.
 @export_range(0, 4, 1) var blur_steps: int = 2:
 	set(value):
 		if blur_steps == value:
@@ -117,6 +143,8 @@ signal s_changed
 		blur_steps = value
 		s_changed.emit()
 
+## Minimum dot between a neighbor's normal and the center pixel's normal for the blur to accept that sample.
+## Lower = harder edge preservation (more noise kept at sharp edges).
 @export_range(0.0, 1.0, 0.001) var blur_normal_treshold: float = 0.5:
 	set(value):
 		if blur_normal_treshold == value:
@@ -124,6 +152,8 @@ signal s_changed
 		blur_normal_treshold = value
 		s_changed.emit()
 
+## Maximum abs(dot(center normal, direction to sample)) before a sample is rejected — rejects samples whose plane diverges too far.
+## Lower = tighter plane coherence.
 @export_range(0.0, 1.0, 0.001) var blur_plane_treshold: float = 0.35:
 	set(value):
 		if blur_plane_treshold == value:
