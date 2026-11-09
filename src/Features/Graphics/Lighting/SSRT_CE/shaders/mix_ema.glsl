@@ -67,7 +67,7 @@ void main() {
 	//Reprojection: read at the world point's previous-frame position, write at uv into the
 	//other ping-pong slot, so shifted reads in other invocations never race this write
 	//(a barrier can't span invocations).
-	float raw_depth = texture(depth_image, uv).r;
+	float raw_depth = texture(depth_image, (vec2(uv) + 0.5) / params.raster_size).r;
 	vec2 uv_center = (vec2(uv) + 0.5) / vec2(size);
 	vec2 prev_px = vec2(uv) + 0.5;
 	float history_valid = params.history_valid;

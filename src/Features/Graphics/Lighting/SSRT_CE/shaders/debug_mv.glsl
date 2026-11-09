@@ -55,7 +55,7 @@ void main() {
 	}
 
 	//Unwritten pixel: camera-only fallback (the sentinel makes get_reprojected_px skip the velocity path).
-	float raw_depth = texture(depth_image, uv).r;
+	float raw_depth = texture(depth_image, (vec2(uv) + 0.5) / params.raster_size).r;
 	vec2 prev_px;
 	bool in_bounds;
 	float d_exp;

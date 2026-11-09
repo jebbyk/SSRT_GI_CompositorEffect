@@ -31,6 +31,6 @@ void main() {
 	//Show EXACTLY what the GI reads: the raw scene-depth sample, as grayscale
 	//(near = dark, far = bright, sky = white). If the image is flat, inverted, or
 	//garbage, the depth sampler is returning wrong values — that is the bug.
-	float raw_depth = texture(depth_image, uv).r;
+	float raw_depth = texture(depth_image, (vec2(uv) + 0.5) / params.raster_size).r;
 	imageStore(color_image, uv, vec4(raw_depth, raw_depth, raw_depth, 1.0));
 }
