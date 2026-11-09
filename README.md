@@ -24,6 +24,4 @@ Godot 4.7.x, Forward+.
 7. On the SubViewport, set `camera_source` to your main camera.
 8. Run the scene (F5).
 
-MSAA is optional — the effect reads scene depth as a sampler, so it works with MSAA on or off. Enable MSAA (`rendering/anti_aliasing/quality/msaa_3d`) only if you want edge antialiasing.
-
 All parameters are tunable in the Inspector on the `settings` resource. A working reference scene: `src/demo/lumberyard_demo.tscn` (branch `lumberyard-demo`).
