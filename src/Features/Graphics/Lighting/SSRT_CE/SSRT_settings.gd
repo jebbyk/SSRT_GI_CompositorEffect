@@ -189,11 +189,13 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 
 
 @export_category("Debug")
-enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO }
+enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH }
 
 ## Debug overlay replacing the effect output. MOTION_VECTORS: black = static, R/G = x/y motion
 ## (64 px = full range), red = previous position off-screen. UNLIT_ALBEDO: the unlit albedo the
-## GI bounce modulates by (lit-color fallback where no source viewport is wired up). Skips trace/blur/mix.
+## GI bounce modulates by (lit-color fallback where no source viewport is wired up).
+## DEPTH: grayscale of the raw scene-depth sample the GI reads (near = dark, far = bright,
+## sky = white). Skips trace/blur/mix.
 @export var debug_view: DebugView = DebugView.NONE:
 	set(value):
 		if debug_view == value:

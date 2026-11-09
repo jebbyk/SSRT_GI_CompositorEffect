@@ -113,6 +113,8 @@ var debug_mv_shader : RID
 var debug_mv_pipeline : RID
 var debug_albedo_shader : RID
 var debug_albedo_pipeline : RID
+var debug_depth_shader : RID
+var debug_depth_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
 var history_depth_uniform : RDUniform
@@ -186,6 +188,7 @@ func _render_setup() -> void:
 		create_mix_box16f_pipeline()
 		create_debug_mv_pipeline()
 		create_debug_albedo_pipeline()
+		create_debug_depth_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
 	
@@ -327,6 +330,16 @@ func create_debug_albedo_pipeline() -> void:
 	if albedo_handoff:
 		constants[DEBUG_ALBEDO_GI_CONSTANT] = true
 	debug_albedo_pipeline = create_pipeline(debug_albedo_shader, constants)
+
+
+func create_debug_depth_pipeline() -> void:
+	if not debug_depth_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_depth_pipeline(). msg: Debug depth shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_depth_pipeline):
+		rd.free_rid(debug_depth_pipeline)
+	
+	debug_depth_pipeline = create_pipeline(debug_depth_shader)
 
 
 func _ema_active() -> bool:
@@ -581,7 +594,24 @@ func _render_view(p_view : int) -> void:
 			push_constant,
 		)
 		return
-	
+
+	#Raw depth buffer: grayscale of exactly what the GI reads (the scene-depth sampler).
+	#Near = dark, far = bright, sky = white. A flat or garbage image = the depth sample is wrong.
+	if settings.debug_view == SSRTSettings.DebugView.DEPTH:
+		var debug_depth_set : Array[RDUniform] = [
+			get_scene_data_ubo(),
+			get_color_image_uniform(p_view),
+			get_depth_sampler_uniform(p_view, nearest_sampler),
+		]
+		run_compute_shader(
+			"SSRT: Debug Depth",
+			debug_depth_shader,
+			debug_depth_pipeline,
+			[debug_depth_set],
+			push_constant,
+		)
+		return
+
 	var uniform_sets : Array[Array]
 	
 	#trace pass
@@ -891,4 +921,5 @@ func _recompile_shaders() -> void:
 	mix_box16f_shader = create_shader(_shader("mix_box16f.glsl"))
 	debug_mv_shader = create_shader(_shader("debug_mv.glsl"))
 	debug_albedo_shader = create_shader(_shader("debug_albedo.glsl"))
+	debug_depth_shader = create_shader(_shader("debug_depth.glsl"))
 	shaders_dirty = true
