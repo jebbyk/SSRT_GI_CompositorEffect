@@ -153,12 +153,18 @@ var push_constant: PackedFloat32Array;
 var settings_dirty: bool = false
 var shaders_dirty: bool = false
 
+var _handoff_frames := 0
+var _handoff_warned := false
+
 #called once on resource creation (when effect is added to list, or when scene loaded)
 func _initialize_resource() -> void:
 	#print("from: SSRT_CE::_initialize_resource()")
 	if not settings:
 		settings = SSRTSettings.new()
 		setup_settings()
+	
+	if not albedo_handoff:
+		albedo_handoff = SSRTAlbedoHandoff.new()
 	
 	access_resolved_depth = true
 	access_resolved_color = true
@@ -546,6 +552,14 @@ func _render_view(p_view : int) -> void:
 	#print("from: SSRT_CE::_render_view()")
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
+	
+	#The albedo handoff must be wired to an SSRTAlbedoSource SubViewport, else the bounce
+	#silently falls back to the lit scene color.
+	if albedo_handoff and not _handoff_warned:
+		_handoff_frames += 1
+		if _handoff_frames >= 60 and not albedo_handoff.viewport_rid.is_valid():
+			push_warning("from: SSRT_CE::_render_view(). msg: albedo_handoff is not connected to an SSRTAlbedoSource SubViewport; the GI bounce uses the lit scene color fallback.")
+			_handoff_warned = true
 	
 	#Per-object velocity buffer for the mix passes' reprojection. The defensive mix.glsl pass
 	#keeps the plain set (declares no velocity).
