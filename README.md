@@ -40,6 +40,6 @@ SSRT_CE is free and open source. If it saved you time and you want more of this,
 the best way to support me is to grab my game on Steam — every sale gets me
 closer to quitting my day job and doing gamedev full time.
 
-[<img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/257085579/7f79a30d433f7ca757c8866ffbfbdd5a2b744e90/movie_600x337.jpg?t=1758356176" width="460" alt="Hotloop — trailer on Steam" />](https://store.steampowered.com/app/2253660/Hotloop/)
+https://github.com/user-attachments/assets/1643169e-1dd1-4dcd-9154-26a764506408
 
 [![Get it on Steam](https://img.shields.io/badge/Get%20it%20on%20Steam-171A1D?logo=steam&logoColor=white&style=for-the-badge)](https://store.steampowered.com/app/2253660/Hotloop/)
