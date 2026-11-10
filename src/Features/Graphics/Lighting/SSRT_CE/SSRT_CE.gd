@@ -166,6 +166,11 @@ func _initialize_resource() -> void:
 	if not albedo_handoff:
 		albedo_handoff = SSRTAlbedoHandoff.new()
 	
+	#Composite the GI after opaque+sky but BEFORE transparent objects, so
+	#particles/glass render on top of the lit result. Matches the reference
+	#scenes; without this the property stays at the engine default
+	#POST_TRANSPARENT and GI is applied after the transparent pass.
+	effect_callback_type = EFFECT_CALLBACK_TYPE_POST_SKY
 	access_resolved_depth = true
 	access_resolved_color = true
 	needs_normal_roughness = true
