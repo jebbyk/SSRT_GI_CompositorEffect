@@ -22,3 +22,9 @@ Godot 4.7.x, Forward+.
 5. Assign the effect's auto-created `albedo_handoff` to the SubViewport's `albedo_handoff`.
 6. On the SubViewport, set `camera_source` to your main camera.
 7. Run the scene (F5).
+
+## Known Limitations
+
+- In the editor's 3D preview, the albedo map is misaligned until the preview is exited; in multi-viewport layouts it may not match the secondary views exactly.
+- Without a wired albedo source viewport, the GI bounce falls back to the lit scene color (console warning).
+- Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
