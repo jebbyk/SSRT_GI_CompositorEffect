@@ -33,3 +33,11 @@ Godot 4.7.x, Forward+.
 - In the editor's 3D preview, the albedo map is misaligned until the preview is exited; in multi-viewport layouts it may not match the secondary views exactly.
 - Without a wired albedo source viewport, the GI bounce falls back to the lit scene color (console warning).
 - Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
+
+## Support
+
+SSRT_CE is free and open source. If it saved you time and you want more of this,
+the best way to support me is to grab my game on Steam — every sale gets me
+closer to quitting my day job and doing gamedev full time.
+
+[![Get it on Steam](https://img.shields.io/badge/Get%20it%20on%20Steam-171A1D?logo=steam&logoColor=white&style=for-the-badge)](https://store.steampowered.com/app/2253660/Hotloop/)
