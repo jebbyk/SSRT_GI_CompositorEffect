@@ -6,6 +6,8 @@ Screen Space Global Illumination Compositor Effect for Godot projects
 <details>
 <summary>Other examples</summary>
 
+<img width="480" height="270" alt="2026-11-11 10-35-43" src="https://github.com/user-attachments/assets/1d50e97c-706a-4a06-9725-86e417930572" />
+
 <img width="720" height="405" alt="p2_00m41-00m53" src="https://github.com/user-attachments/assets/a4900d89-2a12-461f-b97c-f6d709f0fccd" />
 
 <img width="720" height="405" alt="p3_01m00-01m17" src="https://github.com/user-attachments/assets/2b521203-f65f-4127-aa0d-3f9ba6ad9ecb" />
