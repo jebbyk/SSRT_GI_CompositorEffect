@@ -114,5 +114,8 @@ void main() {
 
 	vec3 albedo = get_albedo_modulation(uv, color);
 
-	imageStore(color_image, uv, vec4(mix(color + albedo * acc.rgb, vec3(0), acc.a), 1.0));
+	//Fog-aware composite: GI and occlusion act in unfogged space, then the pixel is refogged.
+	vec4 fog = get_fog_scatter_and_transmittance(uv);
+	float occlusion = clamp(acc.a, 0.0, 1.0);
+	imageStore(color_image, uv, vec4((color + albedo * acc.rgb * fog.a) * (1.0 - occlusion) + fog.rgb * occlusion, 1.0));
 }

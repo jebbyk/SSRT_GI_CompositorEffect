@@ -218,6 +218,35 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
+@export_category("Fog settings")
+## Fog-aware compositing. The engine bakes fog into pixels before any compositor
+## effect can run, so this: un-fogs the bounce sources in the trace, attenuates the
+## composited GI by the scene fog's transmittance, and applies occlusion in unfogged
+## space (occluded pixels darken toward the fog color, not through it).
+## Not modeled: volumetric fog (its transmittance is not exposed to effects), fog
+## aerial perspective and sun scatter (need octmap/sun data).
+@export var fog_attenuates_gi: bool = true:
+	set(value):
+		if fog_attenuates_gi == value:
+			return
+		fog_attenuates_gi = value
+		s_changed.emit()
+
+
+## Fallback fog mode used only when no SSRTAlbedoSource is wired (or its mirrored
+## camera has no Environment): DEPTH uses the fog_depth_begin/end/curve falloff,
+## EXPONENTIAL the density falloff. Normally leave as-is — the mode is auto-detected
+## from the Environment each frame via the albedo handoff. Hidden from the Inspector
+## (@export_storage: persisted, settable from code); no effect when fog_attenuates_gi
+## is off.
+@export_storage var fog_mode: Environment.FogMode = Environment.FOG_MODE_EXPONENTIAL:
+	set(value):
+		if fog_mode == value:
+			return
+		fog_mode = value
+		s_changed.emit()
+
+
 @export_category("Debug")
 enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH }
 

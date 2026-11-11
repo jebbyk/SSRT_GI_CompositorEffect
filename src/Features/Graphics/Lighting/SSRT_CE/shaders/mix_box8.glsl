@@ -19,5 +19,6 @@ layout(rgba8, set = 1, binding = 3) uniform image3D history_write;
 #include "includes/mix_box_decl.glsl"
 #include "includes/common.glsl"
 #include "includes/albedo.glsl"
+#include "includes/fog.glsl"
 #include "includes/disocclusion.glsl"
 #include "includes/mix_box_main.glsl"

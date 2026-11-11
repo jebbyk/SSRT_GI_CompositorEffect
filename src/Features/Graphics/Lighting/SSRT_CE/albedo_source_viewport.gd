@@ -75,6 +75,23 @@ func _process(_delta: float) -> void:
 		src = get_tree().root.get_camera_3d()
 	if src:
 		_apply_mirror_camera(src)
+		_publish_fog_mode(src)
+
+
+## Publishes the mirrored camera's effective fog mode for the CE's fog math.
+## Resolution mirrors the engine's own environment precedence: Camera3D.environment >
+## WorldEnvironment (the camera's world) > viewport fallback.
+func _publish_fog_mode(cam: Camera3D) -> void:
+	if not albedo_handoff:
+		return
+	var env: Environment = cam.environment
+	var vp := cam.get_viewport() as Viewport
+	if env == null and vp:
+		if vp.world_3d:
+			env = vp.world_3d.environment
+		if env == null:
+			env = vp.environment
+	albedo_handoff.fog_mode = env.fog_mode if env else -1
 
 
 func _apply_mirror_camera(cam: Camera3D) -> void:

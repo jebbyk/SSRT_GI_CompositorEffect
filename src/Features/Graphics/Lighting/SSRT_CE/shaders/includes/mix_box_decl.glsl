@@ -32,4 +32,6 @@ layout(push_constant, std430) uniform Params {
 	float reprojection_enabled;
 	float depth_threshold;
 	float bilinear_reprojection;
+	float fog_attenuates_gi;
+	float fog_depth_mode;
 } params;

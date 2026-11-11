@@ -25,11 +25,14 @@ layout(set = 1, binding = 1) uniform sampler2D albedo_texture;
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
 	vec2 albedo_size;
+	float fog_attenuates_gi;
+	float fog_depth_mode;
 } params;
 
 
 #include "includes/common.glsl"
 #include "includes/albedo.glsl"
+#include "includes/fog.glsl"
 
 void main() {
 	ivec2 uv = ivec2(gl_GlobalInvocationID.xy);
@@ -48,5 +51,9 @@ void main() {
 
 	vec3 albedo = get_albedo_modulation(uv, color);
 
-	imageStore(color_image, uv, vec4(mix(color + albedo * GI.rgb, vec3(0), GI.a), 1.0));
+	//Fog-aware composite: GI and occlusion act in unfogged space, then the pixel is refogged.
+	//With fog off this is exactly the old mix(color + albedo*GI, 0, GI.a).
+	vec4 fog = get_fog_scatter_and_transmittance(uv);
+	float occlusion = clamp(GI.a, 0.0, 1.0);
+	imageStore(color_image, uv, vec4((color + albedo * GI.rgb * fog.a) * (1.0 - occlusion) + fog.rgb * occlusion, 1.0));
 }

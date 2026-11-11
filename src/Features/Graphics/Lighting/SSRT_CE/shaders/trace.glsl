@@ -48,6 +48,8 @@ layout(rgba16f, set = 2, binding = 1) uniform image2D out_image;
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
 	vec2 reserved;
+	float fog_attenuates_gi;
+	float fog_depth_mode;
 } params;
 
 
@@ -104,6 +106,7 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 }
 
 #include "includes/common.glsl"
+#include "includes/fog.glsl"
 
 //The code we want to execute in each invocation
 void main() {
@@ -178,6 +181,15 @@ void main() {
 				}
 				
 				vec3 probeTestColor = imageLoad(color_image, ivec2(newUvCoord * vec2(size))).rgb;
+				//The bounce source is a fog-baked pixel; un-fog it so GI carries surface
+				//radiance, not fog (exact while aerial_perspective/sun_scatter are 0).
+				//Where the hit is buried in fog (small T) the division amplifies buffer
+				//quantization into speckle garbage along the fog edge: keep the fogged
+				//color there, the GI*T composite extinguishes it anyway.
+				vec4 hit_fog = get_fog_scatter_and_transmittance(ivec2(newUvCoord * vec2(size)));
+				if(hit_fog.a > 0.25) {
+					probeTestColor = (probeTestColor - hit_fog.rgb) / hit_fog.a;
+				}
 				GI.rgb += probeTestColor;
 				break;
 			}

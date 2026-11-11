@@ -34,6 +34,7 @@ Godot 4.7.x, Forward+.
 - Without a wired albedo source viewport, the GI bounce falls back to the lit scene color (console warning).
 - Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
 - Not compatible with FSR2 upscaling.
+- GI and occlusion composite in unfogged space when `fog_attenuates_gi` is on (fog mode is auto-detected through the wired albedo source). Not modeled: volumetric fog, fog aerial perspective and sun scatter.
 
 ## Support
 

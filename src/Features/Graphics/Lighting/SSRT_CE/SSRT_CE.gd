@@ -423,6 +423,17 @@ func _reprojection_enabled() -> float:
 	return 1.0 if settings.reprojection_enabled else 0.0
 
 
+func _fog_depth_push() -> float:
+	#The fog mode is auto-resolved per frame by SSRTAlbedoSource through the shared
+	#handoff (it mirrors the camera whose fog the CE must match). The exported
+	#settings.fog_mode is only the fallback when no source is wired or no
+	#Environment was found.
+	var mode : int = albedo_handoff.fog_mode if albedo_handoff else -1
+	if mode < 0:
+		mode = settings.fog_mode
+	return 1.0 if mode == Environment.FOG_MODE_DEPTH else 0.0
+
+
 func _ensure_box_history() -> void:
 	#This viewport's N-frame 3D history (rolling slot = frame % N).
 	#A failed create leaves no entry → the mix pass falls back to plain mix.
@@ -641,12 +652,16 @@ func _render_view(p_view : int) -> void:
 		[texture_a_out_image_uniform],
 	]
 	
+	#Extend the base 16-byte push constant to 24 (fog x2) — must match the shader exactly.
+	var trace_push : PackedFloat32Array = push_constant.duplicate()
+	trace_push.push_back(1.0 if settings.fog_attenuates_gi else 0.0)
+	trace_push.push_back(_fog_depth_push())
 	run_compute_shader(
 		"SSRT: Trace",
 		trace_shader,
 		trace_pipeline,
 		uniform_sets,
-		push_constant,
+		trace_push,
 	)
 	
 
@@ -704,13 +719,15 @@ func _render_view(p_view : int) -> void:
 		mix_uniforms.append(history_depth_write_uniform)
 		var vp_key : int = render_scene_buffers.get_instance_id()
 		var history_valid : float = 1.0 if _ema_valid_by_vp.get(vp_key, false) else 0.0
-		#Extend the base 16-byte push constant to 36 (weight/valid/reproj/depth-threshold/bilinear) — must match the shader exactly.
+		#Extend the base 16-byte push constant to 44 (weight/valid/reproj/depth-threshold/bilinear/fog x2) — must match the shader exactly.
 		var ema_push : PackedFloat32Array = push_constant.duplicate()
 		ema_push.push_back(accumulation_weight)
 		ema_push.push_back(history_valid)
 		ema_push.push_back(_reprojection_enabled())
 		ema_push.push_back(settings.reproj_depth_threshold)
 		ema_push.push_back(1.0 if settings.bilinear_reprojection else 0.0)
+		ema_push.push_back(1.0 if settings.fog_attenuates_gi else 0.0)
+		ema_push.push_back(_fog_depth_push())
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms
@@ -740,13 +757,15 @@ func _render_view(p_view : int) -> void:
 		box_slot_index = float(frame % n)
 		box_valid_count = float(mini(frame + 1, n))
 		_box_frame_by_vp[vp_key] = frame
-		#Extend the base 16-byte push constant to 36 (slot/count/reproj/depth-threshold/bilinear) — must match the shader exactly.
+		#Extend the base 16-byte push constant to 44 (slot/count/reproj/depth-threshold/bilinear/fog x2) — must match the shader exactly.
 		var box_push : PackedFloat32Array = push_constant.duplicate()
 		box_push.push_back(box_slot_index)
 		box_push.push_back(box_valid_count)
 		box_push.push_back(_reprojection_enabled())
 		box_push.push_back(settings.reproj_depth_threshold)
 		box_push.push_back(1.0 if settings.bilinear_reprojection else 0.0)
+		box_push.push_back(1.0 if settings.fog_attenuates_gi else 0.0)
+		box_push.push_back(_fog_depth_push())
 		uniform_sets = [
 			mix_scene_set,
 			mix_uniforms
@@ -772,12 +791,16 @@ func _render_view(p_view : int) -> void:
 			scene_uniform_set,
 			mix_uniforms
 		]
+		#Extend the base 16-byte push constant to 24 (fog x2) — must match the shader exactly.
+		var mix_push : PackedFloat32Array = push_constant.duplicate()
+		mix_push.push_back(1.0 if settings.fog_attenuates_gi else 0.0)
+		mix_push.push_back(_fog_depth_push())
 		run_compute_shader(
 			"SSRT: mix",
 			mix_shader,
 			mix_pipeline,
 			uniform_sets,
-			push_constant,
+			mix_push,
 		)
 
 
