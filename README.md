@@ -14,8 +14,6 @@ Screen Space Global Illumination Compositor Effect for Godot projects
 
 <img width="720" height="405" alt="p4_01m22-01m52" src="https://github.com/user-attachments/assets/349ba2e6-5c32-41c1-9c84-7cc51cfd37ca" />
 
-<img width="720" height="405" alt="p6_02m15-02m36" src="https://github.com/user-attachments/assets/0a686e76-fdbb-4cf9-b493-9f7c4a97f087" />
-
 </details>
 
 ## Installing SSRT_CE
