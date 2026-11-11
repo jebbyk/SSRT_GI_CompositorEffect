@@ -33,6 +33,7 @@ Godot 4.7.x, Forward+.
 - In the editor's 3D preview, the albedo map is misaligned until the preview is exited; in multi-viewport layouts it may not match the secondary views exactly.
 - Without a wired albedo source viewport, the GI bounce falls back to the lit scene color (console warning).
 - Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
+- Not compatible with FSR2 upscaling.
 
 ## Support
 
