@@ -9,7 +9,9 @@ extends SubViewport
 ## The albedo map is screen-space: SSRT_CE samples it per pixel of the MAIN
 ## viewport, so this viewport must be rendered from the exact same camera as
 ## the main viewport:
-## - in-game the main viewport uses `camera_source`;
+## - in-game the mirror follows `camera_source` when set, otherwise the main
+##   window's ACTIVE camera (re-resolved every frame, so runtime camera
+##   switches are handled automatically);
 ## - in the editor the 3D preview is rendered from the editor's own viewport
 ##   camera
 ##
@@ -19,7 +21,7 @@ extends SubViewport
 ##   render_size is last-writer-wins, so the single albedo map (mirrored from
 ##   the main view's camera) may not match the other views' rasters exactly.
 
-## Camera whose transform/FOV/near/far is mirrored into this viewport every frame in-game (the editor preview mirrors the editor viewport camera instead).
+## Optional override: pin the mirror to a specific camera. Leave unset to follow the main window's active camera automatically (correct for single-camera and camera-switching projects). The editor preview always mirrors the editor viewport camera.
 @export var camera_source: Camera3D
 ## Handoff resource shared with SSRT_CE (see albedo_handoff.gd); wiring it on both nodes enables the unlit-albedo bounce path.
 @export var albedo_handoff: Resource
@@ -65,6 +67,12 @@ func _process(_delta: float) -> void:
 		src = _editor_3d_camera()
 	elif camera_source:
 		src = camera_source
+	else:
+		# No override: follow the window's ACTIVE camera. Re-resolved every
+		# frame, so runtime camera switches (menus, free-fly, spawned players)
+		# are tracked automatically. Null on frames with no current camera
+		# (e.g. a menu before the player spawns) - the mirror simply holds.
+		src = get_tree().root.get_camera_3d()
 	if src:
 		_apply_mirror_camera(src)
 

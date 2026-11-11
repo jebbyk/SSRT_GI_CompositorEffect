@@ -20,13 +20,15 @@ Screen Space Global Illumination Compositor Effect for Godot projects
 
 Godot 4.7.x, Forward+.
 
-1. Copy the `SSRT_CE` folder into your project (it works in any location).
+1. Copy the `SSRT_CE` folder (in this repository it lives at `src/Features/Graphics/Lighting/SSRT_CE/`) into your project (it works in any location).
 2. Create a new `Compositor` resource (FileSystem dock → New Resource → `Compositor`) and assign it to `WorldEnvironment.compositor` in your scene (add a `WorldEnvironment` node if you don't have one), or to `Camera3D.compositor` for a per-camera effect (a camera-attached compositor is invisible in the editor's 3D viewport).
 3. In the `Compositor` resource, add an element of type `CompositorEffect` to `compositor_effects` and set its script to `SSRT_CE.gd`.
 4. Add a new `SubViewport` node with script `albedo_source_viewport.gd`.
-5. Assign the effect's auto-created `albedo_handoff` to the SubViewport's `albedo_handoff`.
-6. On the SubViewport, set `camera_source` to your main camera.
+5. Create a new `SSRTAlbedoHandoff` resource (FileSystem dock → New Resource → `SSRTAlbedoHandoff`) and save it (e.g. as `SSRT_CE/albedo_handoff.tres`). Assign the saved file to **both** the effect's `albedo_handoff` (Compositor → `compositor_effects[0]` → property dropdown → Load) and the SubViewport's `albedo_handoff` (property dropdown → Load). Both must point to the same resource — it is the data bridge between the viewport and the effect.
+6. *(Optional)* Pin `camera_source` on the SubViewport to a specific camera. If left unset, the albedo mirror automatically follows the main window's active camera — correct for single-camera projects and projects that switch cameras at runtime. Set it only when the game renders through nested viewports or you need a fixed source.
 7. Run the scene (F5).
+
+**Note:** if the effect does not take hold right after the setup (no GI change, or unexpected console errors), reload the project first — Project → Reload Current Project. The editor can keep stale script/shader state for resources it imported mid-session.
 
 ## Known Limitations
 
