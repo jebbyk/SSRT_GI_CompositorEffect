@@ -5,10 +5,7 @@ extends BaseCompositorEffect
 #TODO improve bad sample canceling (on alligning surfaces)
 #TODO use separate z_thickness for AO and bounce (?)
 #TODO reduce self-litting\occluding
-#TODO use includes at full potential
 #TODO advanced denoise (ray cone spot i.e. far samples are wider) (?)
-#TODO more advanced denoise with samples accumulation from several frames
-#TODO even more advanced denosie with motion vectors taken into account
 #TODO optimize with BVH (ye it is possible to build one on a GPU)
 #TODO rays miss to sky color and ground color
 #TODO ray miss to scene skybox

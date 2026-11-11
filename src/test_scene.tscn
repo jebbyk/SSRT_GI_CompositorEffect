@@ -128,7 +128,7 @@ size = Vector3(30, 8, 0.5)
 [node name="Node3D" type="Node3D" unique_id=41970100]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1597292025]
-transform = Transform3D(0.064184174, 0.94866395, 0.3097031, 0.7145723, -0.26032466, 0.6493208, 0.6966109, 0.17962903, -0.69459814, 5.7162585, 1.8341535, -3.6544616)
+transform = Transform3D(0.064184174, 0.94866395, 0.3097031, 0.7145723, -0.26032466, 0.6493208, 0.6966109, 0.17962901, -0.69459814, 5.7162585, 1.8341535, -3.6544616)
 light_color = Color(1, 0.93310845, 0.8230125, 1)
 light_energy = 1.5
 shadow_enabled = true
