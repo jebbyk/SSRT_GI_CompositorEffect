@@ -26,6 +26,8 @@ Godot 4.7.x, Forward+.
 6. *(Optional)* Pin `camera_source` on the SubViewport to a specific camera. If left unset, the albedo mirror automatically follows the main window's active camera — correct for single-camera projects and projects that switch cameras at runtime. Set it only when the game renders through nested viewports or you need a fixed source.
 7. Run the scene (F5).
 
+Or... just ask your AI agent to read this README and install it for you.
+
 **Note:** if the effect does not take hold right after the setup (no GI change, or unexpected console errors), reload the project first — Project → Reload Current Project. The editor can keep stale script/shader state for resources it imported mid-session.
 
 ## Known Limitations
