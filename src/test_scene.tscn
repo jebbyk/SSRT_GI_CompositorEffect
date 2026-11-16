@@ -61,8 +61,6 @@ script = ExtResource("4_handoff")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
-rays_amount = 2
-steps_per_ray = 48
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -156,7 +154,7 @@ dolly_speed = 30.0
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
-size = Vector2i(727, 479)
+size = Vector2i(727, 352)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
