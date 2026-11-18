@@ -248,12 +248,22 @@ void main() {
 			probePosition += probeStep;
 
 			vec2 newUvCoord = probePosition.xy / probePosition.z + vec2(0.5);
+			bool on_screen = inScreen(ivec2(newUvCoord * vec2(size)), size);
 
-			if(!inScreen(ivec2(newUvCoord * vec2(size)), size)) {
+			//The face branch must also fire behind the camera plane: xy/z flips those
+			//probe points back INSIDE the screen bounds and the main depth test can
+			//never hit at negative probe depth — gating on !inScreen alone made rays
+			//aimed at geometry behind the camera skip the side buffers entirely.
+			if(!on_screen || probePosition.z <= 0.0) {
 				if(settings.data.offscreen_enabled <= 0.5) {
-					//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
-					GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
-					break;
+					if(!on_screen) {
+						//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
+						GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
+						break;
+					}
+					//Capture off + behind the plane: main test could not hit here
+					//anyway; keep marching exactly as before.
+					continue;
 				}
 				//Side capture on: keep marching, probing the face buffers each step.
 				exited_offscreen = true;

@@ -1,6 +1,6 @@
 //GI debug: the TEMPORALLY ACCUMULATED bounce — the same history the mix pass composites
 //from (EMA: this frame's history write slot; BOX: average of the valid slices).
-//0.03125 gray base + 2x Reinhard-compressed raw per-ray bounce, color kept, darkened by
+//0.03125 gray base + 4x Reinhard-compressed raw per-ray bounce, color kept, darkened by
 //the accumulated AO (x(1-occ), as in the composite). The trace's bounce/occlusion
 //intensity scales are divided out; no albedo/lit-color modulation, no fog. Sky pixels
 //are black (history is never written there). Runs AFTER trace/blur/mix.
@@ -108,7 +108,7 @@ void main() {
 	vec3 bounce_rgb = GI.rgb / max(settings.data.bounce_intensity * 10.0, 0.0001);
 	//Accumulated AO: history alpha is hits/rays x occlusion_intensity x 0.2 -> raw [0,1].
 	float ao = GI.a / max(settings.data.occlusion_intensity * 0.2, 0.0001);
-	//Bounce: 0.03125 gray base + 2x Reinhard-compressed bounce (b/(1+b) maps [0,inf)
+	//Bounce: 0.03125 gray base + 4x Reinhard-compressed bounce (b/(1+b) maps [0,inf)
 	//into [0,1) so sunlit linear-HDR values stay readable), then darkened by AO with
 	//the same (1 - occlusion) the mix composite applies. x0.45 keeps the result in the
 	//scene tonemapper's linear region.
