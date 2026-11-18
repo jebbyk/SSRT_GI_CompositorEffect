@@ -11,7 +11,6 @@ extends BaseCompositorEffect
 #TODO ray miss to scene skybox
 #TODO retrieve metalicity buffer and use it to proper reflections
 #TODO make it compatible with upscaling (screen quad version remains sharp even with fsr2.1 x0.5)
-#TODO use multiple cameras setup to capture offscreen things (?)
 #TODO use scene voxelization and voxel tracing (maybe as separate CE) (the key difference from original is an actual tracing)
 
 ##Shaders live next to this script, so the whole folder can be dropped anywhere in the project.
@@ -36,6 +35,13 @@ const TEXTURE_OUT_IMAGE_BINDING := 1
 const BLUR_OFFSET_CONSTANT_BINDING: int = 0
 const MIX_ALBEDO_GI_CONSTANT: int = 0
 const DEBUG_ALBEDO_GI_CONSTANT: int = 0
+
+#Offscreen faces (trace + debug_faces, set 1 alongside the settings UBO):
+#two 5-layer arrays, index order right,left,up,down,back.
+const FACE_COLOR_ARRAY_BINDING := 1
+const FACE_NORMAL_ARRAY_BINDING := 2
+const FACE_LAYER_COUNT := 5
+const FACE_PLACEHOLDER_PX := 1
 
 #Mix pass: set 1 bindings
 const ALBEDO_TEXTURE_BINDING := 1
@@ -76,6 +82,14 @@ const HISTORY_DEPTH_WRITE_TEXTURE_NAME: StringName = &"SSRT_HistoryDepthWrite"
 		albedo_handoff = value
 		shaders_dirty = true
 
+## Shared handoff resource filled by SSRTOffscreenFaces / consumed by SSRT_CE (see
+## offscreen_handoff.gd). With settings.offscreen_capture_enabled on, rays leaving the
+## main screen are tested against five side captures (lit color + linear depth) instead
+## of missing to sky instantly.
+@export var face_handoff : Resource :
+	set(value):
+		face_handoff = value
+
 var context : StringName = "SSRT_CE"
 
 var texture_a : StringName  = "TextureA"
@@ -113,6 +127,10 @@ var debug_albedo_shader : RID
 var debug_albedo_pipeline : RID
 var debug_depth_shader : RID
 var debug_depth_pipeline : RID
+var debug_faces_shader : RID
+var debug_faces_pipeline : RID
+var debug_gi_shader : RID
+var debug_gi_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
 var history_depth_uniform : RDUniform
@@ -144,6 +162,21 @@ var _box_mode_warned : bool = false
 var albedo_sampler : RID
 var albedo_placeholder : RID
 var albedo_rd_texture : RID
+
+#Offscreen faces capture state (render-thread only), see offscreen_handoff.gd.
+#_face_active_size = edge of the allocated arrays; ZERO = placeholders bound, no side
+#hits (their alpha 0 never passes the trace hit window).
+var _face_color_rid := RID()
+var _face_normal_rid := RID()
+var _face_active_size := Vector2i.ZERO
+var face_color_placeholder : RID
+var face_normal_placeholder : RID
+var _face_renders_seen := false
+var _face_warned := false
+var _face_frames := 0
+#1x1x1 SAMPLING 3D texture: binds harmlessly to debug_gi's box_hist sampler when the
+#accumulation mode is not BOX (the sampler is never read in that case).
+var _box_hist_placeholder : RID
 
 var push_constant: PackedFloat32Array;
 
@@ -180,7 +213,29 @@ func _initialize_render() -> void:
 	#print("from: SSRT_CE::_initialize_render()")
 	albedo_sampler = create_sampler(RenderingDevice.SamplerFilter.SAMPLER_FILTER_LINEAR)
 	_create_albedo_placeholder()
+	_create_face_placeholders()
+	_box_hist_placeholder = rd.texture_create(_box3d_placeholder_format(), RDTextureView.new(), [_box_hist_placeholder_bytes()])
+	add_rid_to_free(_box_hist_placeholder, "box history placeholder")
 	_recompile_shaders()
+
+
+func _box3d_placeholder_format() -> RDTextureFormat:
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	format.width = 1
+	format.height = 1
+	format.depth = 1
+	format.array_layers = 1
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_3D
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
+	return format
+
+
+func _box_hist_placeholder_bytes() -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(8)  #one RGBA16F texel
+	return bytes
 		
 	
 #called every frame before executing code for each view
@@ -198,6 +253,8 @@ func _render_setup() -> void:
 		create_debug_mv_pipeline()
 		create_debug_albedo_pipeline()
 		create_debug_depth_pipeline()
+		create_debug_faces_pipeline()
+		create_debug_gi_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
 	
@@ -205,8 +262,11 @@ func _render_setup() -> void:
 	#Written render-thread / read main-thread.
 	if albedo_handoff:
 		albedo_handoff.render_size = render_size
+	if face_handoff and render_size.y > 0:
+		face_handoff.main_aspect = float(render_size.x) / float(render_size.y)
 	
 	_resolve_albedo_texture()
+	_sync_face_textures()
 	
 	if not render_scene_buffers.has_texture(context, texture_a):
 		create_textures()
@@ -349,6 +409,26 @@ func create_debug_depth_pipeline() -> void:
 		rd.free_rid(debug_depth_pipeline)
 	
 	debug_depth_pipeline = create_pipeline(debug_depth_shader)
+
+
+func create_debug_faces_pipeline() -> void:
+	if not debug_faces_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_faces_pipeline(). msg: Debug faces shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_faces_pipeline):
+		rd.free_rid(debug_faces_pipeline)
+	
+	debug_faces_pipeline = create_pipeline(debug_faces_shader)
+
+
+func create_debug_gi_pipeline() -> void:
+	if not debug_gi_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_gi_pipeline(). msg: Debug GI shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_gi_pipeline):
+		rd.free_rid(debug_gi_pipeline)
+	
+	debug_gi_pipeline = create_pipeline(debug_gi_shader)
 
 
 func _ema_active() -> bool:
@@ -541,6 +621,43 @@ func _free_box_history() -> void:
 		_drop_box_history_entry(vp_key)
 
 
+## Debug helper (not used at runtime): render-thread readback of the center texel's
+## packed depth (alpha) of each face layer, published to handoff.debug_depth_readback
+## as meters. Requires the color array's CAN_COPY_FROM usage bit.
+static func debug_read_face_depth_center(p_handoff) -> void:
+	var device := RenderingServer.get_rendering_device()
+	if device == null or p_handoff == null or p_handoff.face_size == Vector2i.ZERO:
+		return
+	var w : int = p_handoff.face_size.x
+	var h : int = p_handoff.face_size.y
+	var centers : Array = []
+	var colors : Array = []
+	for layer in FACE_LAYER_COUNT:
+		var val := -1.0
+		var bytes := device.texture_get_data(p_handoff.face_color_array, layer)
+		if bytes.size() >= w * h * 8:
+			var off : int = (int(h / 2) * w + int(w / 2)) * 8
+			val = _half_to_float(bytes.decode_u16(off + 6))
+			colors.append([_half_to_float(bytes.decode_u16(off)),
+				_half_to_float(bytes.decode_u16(off + 2)),
+				_half_to_float(bytes.decode_u16(off + 4))])
+		centers.append(val)
+	p_handoff.debug_depth_readback = centers
+	p_handoff.debug_color_readback = colors
+
+
+## IEEE754 half -> float (this engine's PackedByteArray has no half decoder).
+static func _half_to_float(bits : int) -> float:
+	var s := -1.0 if bits & 0x8000 else 1.0
+	var e := (bits >> 10) & 0x1F
+	var m := bits & 0x3FF
+	if e == 0:
+		return s * m * 0.0000152587890625
+	if e == 31:
+		return s * INF
+	return s * (1.0 + m / 1024.0) * pow(2.0, e - 15)
+
+
 func _report_vram_estimate() -> void:
 	#Informational VRAM footprint of the history buffers.
 	var w : int = render_size.x
@@ -559,12 +676,32 @@ func _report_vram_estimate() -> void:
 		w, h,
 		" x2 ping-pong" if copies == 2 else "",
 	])
+	if settings.offscreen_capture_enabled:
+		#Face arrays: 2 x (color+depth, normal) RGBA16F at the side size.
+		var fpx : int = settings.face_size_px()
+		var a : float = face_handoff.main_aspect if face_handoff else 1.0
+		var fw : int = roundi(fpx * maxf(a, 1.0))
+		var fh : int = roundi(fpx * maxf(1.0 / a, 1.0))
+		print("SSRT_CE: offscreen faces ≈ %.1f MB (2 arrays x 5 x %dx%d RGBA16F)%s" % [
+			fw * fh * FACE_LAYER_COUNT * 16.0 / 1048576.0,
+			fw, fh,
+			"" if settings.face_update_frequency >= 60 else " (re-rendered %d/s)" % settings.face_update_frequency,
+		])
 
 	
 func _render_view(p_view : int) -> void:
 	#print("from: SSRT_CE::_render_view()")
 	var scene_uniform_set : Array[RDUniform] = get_scene_uniform_set(p_view)
 	var settings_uniform_set : Array[RDUniform] = [settings_ubo_uniform]
+	
+	#Face arrays bind unconditionally (trace/debug shaders always declare them):
+	#real arrays once allocated, zero-filled placeholders until then — alpha 0 never
+	#passes the trace hit window, so placeholders read as "no sides".
+	var face_color_bind : RID = _face_color_rid
+	var face_normal_bind : RID = _face_normal_rid
+	if _face_active_size == Vector2i.ZERO:
+		face_color_bind = face_color_placeholder
+		face_normal_bind = face_normal_placeholder
 	
 	#The albedo handoff must be wired to an SSRTAlbedoSource SubViewport, else the bounce
 	#silently falls back to the lit scene color.
@@ -573,6 +710,16 @@ func _render_view(p_view : int) -> void:
 		if _handoff_frames >= 60 and not albedo_handoff.viewport_rid.is_valid():
 			push_warning("from: SSRT_CE::_render_view(). msg: albedo_handoff is not connected to an SSRTAlbedoSource SubViewport; the GI bounce uses the lit scene color fallback.")
 			_handoff_warned = true
+	
+	#Offscreen capture is on but the side viewports never dispatched: no
+	#SSRTOffscreenFaces node, or it is not wired to this handoff/settings.
+	if settings.offscreen_capture_enabled and not _face_renders_seen and not _face_warned:
+		_face_frames += 1
+		if face_handoff and face_handoff.total_renders() > 0:
+			_face_renders_seen = true
+		elif _face_frames >= 300:
+			push_warning("from: SSRT_CE::_render_view(). msg: offscreen_capture_enabled but no face capture dispatches arrived; add an SSRTOffscreenFaces node wired to the same SSRTOffscreenHandoff and settings.")
+			_face_warned = true
 	
 	#Per-object velocity buffer for the mix passes' reprojection. The defensive mix.glsl pass
 	#keeps the plain set (declares no velocity).
@@ -640,19 +787,45 @@ func _render_view(p_view : int) -> void:
 		)
 		return
 
+	#Offscreen side captures tiled 3x2, color modulated by captured depth
+	#(colored cell borders; cell 5 = live main view).
+	if settings.debug_view == SSRTSettings.DebugView.OFFSCREEN_FACES:
+		var debug_faces_sets : Array[Array] = [
+			[get_color_image_uniform(p_view)],
+			[settings_ubo_uniform, get_sampler_uniform(face_color_bind, albedo_sampler, FACE_COLOR_ARRAY_BINDING)],
+		]
+		run_compute_shader(
+			"SSRT: Debug Faces",
+			debug_faces_shader,
+			debug_faces_pipeline,
+			debug_faces_sets,
+			push_constant,
+		)
+		return
+
 	var uniform_sets : Array[Array]
 	
 	#trace pass
+	#Trace extends set 1 with the face arrays; blur keeps the plain UBO-only set
+	#(binding resources the shader does not declare fails uniform set creation).
+	var trace_settings_set : Array[RDUniform] = [
+		settings_ubo_uniform,
+		get_sampler_uniform(face_color_bind, albedo_sampler, FACE_COLOR_ARRAY_BINDING),
+		get_sampler_uniform(face_normal_bind, nearest_sampler, FACE_NORMAL_ARRAY_BINDING),
+	]
 	uniform_sets = [
 		scene_uniform_set,
-		settings_uniform_set,
+		trace_settings_set,
 		[texture_a_out_image_uniform],
 	]
 	
-	#Extend the base 16-byte push constant to 24 (fog x2) — must match the shader exactly.
+	#Extend the base 16-byte push constant to 32 (fog x2 + face yaw/pitch) — must match
+	#the shader exactly. Angles come from SSRTOffscreenFaces via the handoff.
 	var trace_push : PackedFloat32Array = push_constant.duplicate()
 	trace_push.push_back(1.0 if settings.fog_attenuates_gi else 0.0)
 	trace_push.push_back(_fog_depth_push())
+	trace_push.push_back(face_handoff.face_yaw if face_handoff else PI / 2.0)
+	trace_push.push_back(face_handoff.face_pitch if face_handoff else PI / 2.0)
 	run_compute_shader(
 		"SSRT: Trace",
 		trace_shader,
@@ -800,6 +973,57 @@ func _render_view(p_view : int) -> void:
 			mix_push,
 		)
 
+	#Debug GI: map the TEMPORALLY ACCUMULATED bounce — the same history the mix pass
+	#just composited from (runs after mix, so history is current; color_image gets
+	#overwritten with the map). EMA: the slot written this frame = the side the flipped
+	#swap will read next frame. BOX: average of the valid slices of the written 3D
+	#texture (exact for the reprojection path; the no-reprojection path's staleness
+	#replacements read as slightly older values in rare rejected slots).
+	if settings.debug_view == SSRTSettings.DebugView.GI:
+		var vp_key : int = render_scene_buffers.get_instance_id()
+		var gi_mode := 2.0
+		var ema_bind : RID = albedo_placeholder
+		var box_bind : RID = _box_hist_placeholder
+		var box_count := 1.0
+		var box_scale := 1.0
+		if _ema_active():
+			var written_name : StringName = HISTORY_WRITE_TEXTURE_NAME \
+				if _ema_swap_by_vp.get(vp_key, 0) == 1 else HISTORY_TEXTURE_NAME
+			ema_bind = render_scene_buffers.get_texture_slice(context, written_name, 0, 0, 1, 1)
+			gi_mode = 0.0
+		elif _box_wanted() and _box_history_by_vp.has(vp_key):
+			var hist_entry : Variant = _box_history_by_vp[vp_key]
+			box_bind = hist_entry.textures[hist_entry.swap]
+			box_count = box_valid_count
+			box_scale = 8.0 if settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8 else 1.0
+			gi_mode = 1.0
+		var debug_gi_sets : Array[Array] = [
+			[
+				get_scene_data_ubo(),
+				get_color_image_uniform(p_view),
+				get_depth_sampler_uniform(p_view, nearest_sampler),
+			],
+			[
+				in_image_uniform,
+				get_uniform_buffer_uniform(settings_ubo, 1),
+				get_sampler_uniform(ema_bind, albedo_sampler, 2),
+				get_sampler_uniform(box_bind, albedo_sampler, 3),
+			],
+		]
+		#Base 16 bytes + mode/count/scale/pad = 32.
+		var gi_push : PackedFloat32Array = push_constant.duplicate()
+		gi_push.push_back(gi_mode)
+		gi_push.push_back(box_count)
+		gi_push.push_back(box_scale)
+		gi_push.push_back(0.0)
+		run_compute_shader(
+			"SSRT: Debug GI",
+			debug_gi_shader,
+			debug_gi_pipeline,
+			debug_gi_sets,
+			gi_push,
+		)
+
 
 func _render_size_changed() -> void:
 	#print("from: SSRT_CE::_render_size_changed()")
@@ -865,7 +1089,13 @@ func create_settings_uniform_buffer() -> void:
 
 		#bool
 		settings.depth_affect_ray_length,
-		settings.back_face_lighting
+		settings.back_face_lighting,
+
+		#Offscreen sides, float-encoded (SSRTData in trace/debug_faces declares the same
+		#trailing fields; blur keeps its shorter copy — prefix offsets are identical).
+		1.0 if settings.offscreen_capture_enabled else 0.0,
+		float(settings.face_mask()),
+		float(settings.face_size_px()),
 	]
 	
 	settings_ubo = create_uniform_buffer(data)
@@ -925,6 +1155,82 @@ func _create_albedo_placeholder() -> void:
 	add_rid_to_free(albedo_placeholder, "albedo placeholder texture")
 
 
+func _create_face_placeholders() -> void:
+	face_color_placeholder = _create_face_array("face color placeholder", 1, 1)
+	face_normal_placeholder = _create_face_array("face normal placeholder", 1, 1)
+
+
+## One face texture array: 5 layers = face index (order fixed in offscreen_handoff.gd),
+## RGBA16F, SAMPLE|STORAGE. Zero-filled: unwritten texels carry alpha 0 = "no surface",
+## which the trace hit window can never pass. texture_create() wants one PackedByteArray
+## PER LAYER (count == array_layers) — a single combined buffer fails with "invalid length".
+func _create_face_array(p_label : String, p_w : int, p_h : int, p_copy_from : bool = false) -> RID:
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	format.width = p_w
+	format.height = p_h
+	format.depth = 1
+	format.array_layers = FACE_LAYER_COUNT
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_2D_ARRAY
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT \
+		| RenderingDevice.TEXTURE_USAGE_STORAGE_BIT
+	if p_copy_from:
+		format.usage_bits |= RenderingDevice.TEXTURE_USAGE_CAN_COPY_FROM_BIT
+
+	var layer_bytes := PackedByteArray()
+	layer_bytes.resize(p_w * p_h * 8)
+	var data : Array[PackedByteArray] = []
+	for i in FACE_LAYER_COUNT:
+		data.append(layer_bytes)
+
+	var view := RDTextureView.new()
+	var rid : RID = rd.texture_create(format, view, data)
+	if rid.is_valid():
+		add_rid_to_free(rid, p_label)
+	else:
+		push_error("from: SSRT_CE::_create_face_array(). msg: failed to create %s (%dx%d, %d layers)." % [p_label, p_w, p_h, FACE_LAYER_COUNT])
+	return rid
+
+
+## Allocates / frees / republishes the face texture arrays to match the settings.
+## Render-thread only. Side viewports render before the main window in the same flush,
+## so a capture effect always sees valid arrays or cleared (invalid) slots — never a
+## freed RID, because the handoff is nulled before freeing.
+func _sync_face_textures() -> void:
+	var want := Vector2i.ZERO
+	if settings.offscreen_capture_enabled and face_handoff:
+		var px : int = settings.face_size_px()
+		var a : float = face_handoff.main_aspect
+		want = Vector2i(roundi(px * maxf(a, 1.0)), roundi(px * maxf(1.0 / a, 1.0)))
+	if want == _face_active_size:
+		return
+
+	face_handoff.face_color_array = RID()
+	face_handoff.face_normal_array = RID()
+	face_handoff.face_size = Vector2i.ZERO
+	if _face_color_rid.is_valid():
+		free_rid(_face_color_rid)
+	if _face_normal_rid.is_valid():
+		free_rid(_face_normal_rid)
+	_face_color_rid = RID()
+	_face_normal_rid = RID()
+	#Record the request even on failure: a per-frame retry would spam errors.
+	#Placeholders keep the trace safe; the feature no-ops until settings change.
+	_face_active_size = want
+	if want == Vector2i.ZERO:
+		return
+
+	_face_color_rid = _create_face_array("face color array", want.x, want.y, true)
+	_face_normal_rid = _create_face_array("face normal array", want.x, want.y)
+	if _face_color_rid.is_valid() and _face_normal_rid.is_valid():
+		face_handoff.face_color_array = _face_color_rid
+		face_handoff.face_normal_array = _face_normal_rid
+		face_handoff.face_size = want
+	else:
+		_face_active_size = Vector2i.ZERO
+
+
 func _build_push_constant(p_render_size: Vector2i) -> PackedFloat32Array:
 	push_constant= PackedFloat32Array()
 	push_constant.push_back(p_render_size.x)
@@ -962,4 +1268,6 @@ func _recompile_shaders() -> void:
 	debug_mv_shader = create_shader(_shader("debug_mv.glsl"))
 	debug_albedo_shader = create_shader(_shader("debug_albedo.glsl"))
 	debug_depth_shader = create_shader(_shader("debug_depth.glsl"))
+	debug_faces_shader = create_shader(_shader("debug_faces.glsl"))
+	debug_gi_shader = create_shader(_shader("debug_gi.glsl"))
 	shaders_dirty = true

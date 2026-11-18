@@ -24,11 +24,49 @@ Godot 4.7.x, Forward+.
 4. Add a new `SubViewport` node with script `albedo_source_viewport.gd`.
 5. Create a new `SSRTAlbedoHandoff` resource (FileSystem dock → New Resource → `SSRTAlbedoHandoff`) and save it (e.g. as `SSRT_CE/albedo_handoff.tres`). Assign the saved file to **both** the effect's `albedo_handoff` (Compositor → `compositor_effects[0]` → property dropdown → Load) and the SubViewport's `albedo_handoff` (property dropdown → Load). Both must point to the same resource — it is the data bridge between the viewport and the effect.
 6. *(Optional)* Pin `camera_source` on the SubViewport to a specific camera. If left unset, the albedo mirror automatically follows the main window's active camera — correct for single-camera projects and projects that switch cameras at runtime. Set it only when the game renders through nested viewports or you need a fixed source.
-7. Run the scene (F5).
+7. *(Optional — offscreen capture)* To let rays that leave the screen still hit geometry outside the main view, add a `Node` with script `offscreen_faces_source.gd`. Create a new `SSRTOffscreenHandoff` resource (FileSystem dock → New Resource) and assign it to **both** the effect's `face_handoff` and the node's `face_handoff`; also assign the same `settings` resource to the node's `settings`. Then in the settings, turn on `offscreen_capture_enabled` (see below). The node spawns five side viewports (right/left/up/down/back around the camera); each packs its lit color + linear depth into its own render target for the tracer to sample.
+8. Run the scene (F5).
 
 Or... just ask your AI agent to read this README and install it for you.
 
 **Note:** if the effect does not take hold right after the setup (no GI change, or unexpected console errors), reload the project first — Project → Reload Current Project. The editor can keep stale script/shader state for resources it imported mid-session.
+
+## Offscreen capture (optional)
+
+Pure screen-space GI loses every ray that exits the frame — it can only bounce light from
+what the camera can currently see. `offscreen_capture_enabled` adds five extra scene renders
+(right / left / up / down / back around the camera) so rays that leave the main screen are
+depth-tested against those side captures and can still hit geometry behind or beside the view.
+Rays that miss everything still fall back to `sky_color`.
+
+Each side shares the MAIN camera's projection (fov, aspect, near/far) and its frustum is
+rotated toward the main view so the side coverage overlaps the main screen edge — no dead
+band where just-exited rays live. Side hits use the sides' native gbuffer normals for the
+same grazing rejection as the main path.
+
+Controls (settings → "Offscreen capture" category):
+
+- `offscreen_capture_enabled` — master switch. Off = zero cost, original sky-miss behavior.
+- `capture_face_right / _left / _up / _down / _back` — toggle each side independently to trade
+  coverage for performance. The back side is usually the least useful (rays rarely reach it
+  within `ray_length`).
+- `face_resolution` — 8…256 px, one square size shared by all sides. Each side is a full
+  extra scene render, so this is the main performance knob; 64 is enough in practice —
+  higher rungs measured no visible difference while cost keeps growing quadratically.
+- `face_update_frequency` — 1…60 re-renders per second. Between renders a side holds its last
+  frame, so low values make offscreen bounces lag under camera motion. 60 = every frame.
+
+Debug view **GI** shows the temporally accumulated bounce light — the same history the mix
+pass composites from — as a 0.03125 gray base plus the Reinhard-compressed raw per-ray
+bounce (color kept). The trace's `bounce_intensity` scale is divided out, so the map is
+stable when the knob moves; no albedo/lit-color modulation, no fog, no AO term. Sky pixels
+are black. Its noise matches the composited result (same accumulation window).
+
+Debug view **OFFSCREEN_FACES** tiles the five live side captures (colored borders: red=right,
+green=left, blue=up, yellow=down, magenta=back) plus the main view (white cell). Each side's
+color is modulated by its captured linear depth — near = dark, far = bright, sky = white,
+pure black = texel never written — so you can judge whether the side depth capture is correct
+(smooth gradients along surfaces, sky white, no flat black/white regions).
 
 ## Known Limitations
 
@@ -37,6 +75,9 @@ Or... just ask your AI agent to read this README and install it for you.
 - Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
 - Not compatible with FSR2 upscaling.
 - GI and occlusion composite in unfogged space when `fog_attenuates_gi` is on (fog mode is auto-detected through the wired albedo source). Not modeled: volumetric fog, fog aerial perspective and sun scatter.
+- Offscreen sides store color + linear depth + the native gbuffer normal. Side hits keep
+  fog baked into their color (the main path un-fogs its bounce sources), and side captures
+  are lower resolution than the main view, so distant offscreen hits are coarse.
 
 ## Support
 

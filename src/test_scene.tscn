@@ -5,6 +5,8 @@
 [ext_resource type="Script" uid="uid://b35jqh3ryff5l" path="res://Features/Graphics/Lighting/SSRT_CE/SSRT_settings.gd" id="3_buypi"]
 [ext_resource type="Script" uid="uid://dufx3i0ilcvu6" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_handoff.gd" id="4_handoff"]
 [ext_resource type="Script" uid="uid://c580tb3qpuiwx" path="res://Features/Graphics/Lighting/SSRT_CE/albedo_source_viewport.gd" id="5_albsrc"]
+[ext_resource type="Script" uid="uid://b0n3lgg3fkgox" path="res://Features/Graphics/Lighting/SSRT_CE/offscreen_faces_source.gd" id="6_facesrc"]
+[ext_resource type="Script" uid="uid://ckqfin7rrvjll" path="res://Features/Graphics/Lighting/SSRT_CE/offscreen_handoff.gd" id="7_facehand"]
 
 [sub_resource type="GDScript" id="GDScript_2nij2"]
 script/source = "@tool
@@ -59,6 +61,9 @@ adjustment_brightness = 1.3
 [sub_resource type="Resource" id="SSRTAlbedoHandoff_1"]
 script = ExtResource("4_handoff")
 
+[sub_resource type="Resource" id="SSRTOffscreenHandoff_1"]
+script = ExtResource("7_facehand")
+
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
 
@@ -75,6 +80,7 @@ needs_separate_specular = true
 script = ExtResource("2_8pr8v")
 settings = SubResource("Resource_8pr8v")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
+face_handoff = SubResource("SSRTOffscreenHandoff_1")
 metadata/_custom_type_script = "uid://ccb43csyh10lr"
 
 [sub_resource type="Compositor" id="Compositor_n8ajh"]
@@ -154,11 +160,16 @@ dolly_speed = 30.0
 debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
-size = Vector2i(727, 352)
+size = Vector2i(1412, 837)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")
 albedo_handoff = SubResource("SSRTAlbedoHandoff_1")
+
+[node name="OffscreenFacesSource" type="Node" parent="." unique_id=1597518245]
+script = ExtResource("6_facesrc")
+settings = SubResource("Resource_8pr8v")
+face_handoff = SubResource("SSRTOffscreenHandoff_1")
 
 [node name="Shapes" type="MeshInstance3D" parent="." unique_id=1700000001]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 7)

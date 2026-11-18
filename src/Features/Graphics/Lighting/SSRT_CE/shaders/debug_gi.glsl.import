@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://kuqixxs3wwt4"
+path="res://.godot/imported/debug_gi.glsl-644086c904313588d6bb4552512f75cd.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/debug_gi.glsl"
+dest_files=["res://.godot/imported/debug_gi.glsl-644086c904313588d6bb4552512f75cd.res"]
+
+[params]
+
