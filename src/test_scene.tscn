@@ -66,11 +66,12 @@ script = ExtResource("7_facehand")
 
 [sub_resource type="Resource" id="Resource_8pr8v"]
 script = ExtResource("3_buypi")
+bounce_intensity = 1.0
+accumulation_frames = 64
 offscreen_capture_enabled = true
-capture_face_right = false
-capture_face_left = false
-capture_face_up = false
-capture_face_down = false
+face_resolution = 2
+face_update_frequency = 5
+debug_view = 5
 
 [sub_resource type="CompositorEffect" id="CompositorEffect_buypi"]
 resource_local_to_scene = false
@@ -166,7 +167,7 @@ debug_draw = 1
 use_hdr_2d = true
 scaling_3d_mode = 0
 scaling_3d_scale = 1.0
-size = Vector2i(365, 239)
+size = Vector2i(365, 209)
 render_target_update_mode = 4
 script = ExtResource("5_albsrc")
 camera_source = NodePath("../Camera3D-free-look")

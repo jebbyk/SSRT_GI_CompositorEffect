@@ -55,6 +55,12 @@ Controls (settings → "Offscreen capture" category):
 - `face_update_frequency` — 1…60 re-renders per second. Between renders a side holds its last
   frame, so low values make offscreen bounces lag under camera motion. 60 = every frame.
 
+Debug view **GI** shows the temporally accumulated bounce light — the same history the mix
+pass composites from — as a 0.03125 gray base plus the Reinhard-compressed raw per-ray
+bounce (color kept). The trace's `bounce_intensity` scale is divided out, so the map is
+stable when the knob moves; no albedo/lit-color modulation, no fog, no AO term. Sky pixels
+are black. Its noise matches the composited result (same accumulation window).
+
 Debug view **OFFSCREEN_FACES** tiles the five live side captures (colored borders: red=right,
 green=left, blue=up, yellow=down, magenta=back) plus the main view (white cell). Each side's
 color is modulated by its captured linear depth — near = dark, far = bright, sky = white,

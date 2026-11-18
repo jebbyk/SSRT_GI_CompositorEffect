@@ -129,6 +129,8 @@ var debug_depth_shader : RID
 var debug_depth_pipeline : RID
 var debug_faces_shader : RID
 var debug_faces_pipeline : RID
+var debug_gi_shader : RID
+var debug_gi_pipeline : RID
 var history_image_uniform : RDUniform
 var history_write_uniform : RDUniform
 var history_depth_uniform : RDUniform
@@ -172,6 +174,9 @@ var face_normal_placeholder : RID
 var _face_renders_seen := false
 var _face_warned := false
 var _face_frames := 0
+#1x1x1 SAMPLING 3D texture: binds harmlessly to debug_gi's box_hist sampler when the
+#accumulation mode is not BOX (the sampler is never read in that case).
+var _box_hist_placeholder : RID
 
 var push_constant: PackedFloat32Array;
 
@@ -209,7 +214,28 @@ func _initialize_render() -> void:
 	albedo_sampler = create_sampler(RenderingDevice.SamplerFilter.SAMPLER_FILTER_LINEAR)
 	_create_albedo_placeholder()
 	_create_face_placeholders()
+	_box_hist_placeholder = rd.texture_create(_box3d_placeholder_format(), RDTextureView.new(), [_box_hist_placeholder_bytes()])
+	add_rid_to_free(_box_hist_placeholder, "box history placeholder")
 	_recompile_shaders()
+
+
+func _box3d_placeholder_format() -> RDTextureFormat:
+	var format := RDTextureFormat.new()
+	format.format = RenderingDevice.DATA_FORMAT_R16G16B16A16_SFLOAT
+	format.width = 1
+	format.height = 1
+	format.depth = 1
+	format.array_layers = 1
+	format.mipmaps = 1
+	format.texture_type = RenderingDevice.TEXTURE_TYPE_3D
+	format.usage_bits = RenderingDevice.TEXTURE_USAGE_SAMPLING_BIT
+	return format
+
+
+func _box_hist_placeholder_bytes() -> PackedByteArray:
+	var bytes := PackedByteArray()
+	bytes.resize(8)  #one RGBA16F texel
+	return bytes
 		
 	
 #called every frame before executing code for each view
@@ -228,6 +254,7 @@ func _render_setup() -> void:
 		create_debug_albedo_pipeline()
 		create_debug_depth_pipeline()
 		create_debug_faces_pipeline()
+		create_debug_gi_pipeline()
 		shaders_dirty = false
 		_report_vram_estimate()
 	
@@ -392,6 +419,16 @@ func create_debug_faces_pipeline() -> void:
 		rd.free_rid(debug_faces_pipeline)
 	
 	debug_faces_pipeline = create_pipeline(debug_faces_shader)
+
+
+func create_debug_gi_pipeline() -> void:
+	if not debug_gi_shader.is_valid():
+		push_error("from: SSRT_CE::create_debug_gi_pipeline(). msg: Debug GI shader is not valid")
+		
+	if rd.compute_pipeline_is_valid(debug_gi_pipeline):
+		rd.free_rid(debug_gi_pipeline)
+	
+	debug_gi_pipeline = create_pipeline(debug_gi_shader)
 
 
 func _ema_active() -> bool:
@@ -936,6 +973,57 @@ func _render_view(p_view : int) -> void:
 			mix_push,
 		)
 
+	#Debug GI: map the TEMPORALLY ACCUMULATED bounce — the same history the mix pass
+	#just composited from (runs after mix, so history is current; color_image gets
+	#overwritten with the map). EMA: the slot written this frame = the side the flipped
+	#swap will read next frame. BOX: average of the valid slices of the written 3D
+	#texture (exact for the reprojection path; the no-reprojection path's staleness
+	#replacements read as slightly older values in rare rejected slots).
+	if settings.debug_view == SSRTSettings.DebugView.GI:
+		var vp_key : int = render_scene_buffers.get_instance_id()
+		var gi_mode := 2.0
+		var ema_bind : RID = albedo_placeholder
+		var box_bind : RID = _box_hist_placeholder
+		var box_count := 1.0
+		var box_scale := 1.0
+		if _ema_active():
+			var written_name : StringName = HISTORY_WRITE_TEXTURE_NAME \
+				if _ema_swap_by_vp.get(vp_key, 0) == 1 else HISTORY_TEXTURE_NAME
+			ema_bind = render_scene_buffers.get_texture_slice(context, written_name, 0, 0, 1, 1)
+			gi_mode = 0.0
+		elif _box_wanted() and _box_history_by_vp.has(vp_key):
+			var hist_entry : Variant = _box_history_by_vp[vp_key]
+			box_bind = hist_entry.textures[hist_entry.swap]
+			box_count = box_valid_count
+			box_scale = 8.0 if settings.accumulation_mode == SSRTSettings.AccumulationMode.BOX8 else 1.0
+			gi_mode = 1.0
+		var debug_gi_sets : Array[Array] = [
+			[
+				get_scene_data_ubo(),
+				get_color_image_uniform(p_view),
+				get_depth_sampler_uniform(p_view, nearest_sampler),
+			],
+			[
+				in_image_uniform,
+				get_uniform_buffer_uniform(settings_ubo, 1),
+				get_sampler_uniform(ema_bind, albedo_sampler, 2),
+				get_sampler_uniform(box_bind, albedo_sampler, 3),
+			],
+		]
+		#Base 16 bytes + mode/count/scale/pad = 32.
+		var gi_push : PackedFloat32Array = push_constant.duplicate()
+		gi_push.push_back(gi_mode)
+		gi_push.push_back(box_count)
+		gi_push.push_back(box_scale)
+		gi_push.push_back(0.0)
+		run_compute_shader(
+			"SSRT: Debug GI",
+			debug_gi_shader,
+			debug_gi_pipeline,
+			debug_gi_sets,
+			gi_push,
+		)
+
 
 func _render_size_changed() -> void:
 	#print("from: SSRT_CE::_render_size_changed()")
@@ -1181,4 +1269,5 @@ func _recompile_shaders() -> void:
 	debug_albedo_shader = create_shader(_shader("debug_albedo.glsl"))
 	debug_depth_shader = create_shader(_shader("debug_depth.glsl"))
 	debug_faces_shader = create_shader(_shader("debug_faces.glsl"))
+	debug_gi_shader = create_shader(_shader("debug_gi.glsl"))
 	shaders_dirty = true

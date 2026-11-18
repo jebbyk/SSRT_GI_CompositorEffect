@@ -346,7 +346,7 @@ func face_mask() -> int:
 
 
 @export_category("Debug")
-enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH, OFFSCREEN_FACES }
+enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH, OFFSCREEN_FACES, GI }
 
 ## Debug overlay replacing the effect output. MOTION_VECTORS: black = static, R/G = x/y motion
 ## (64 px = full range), red = previous position off-screen. UNLIT_ALBEDO: the unlit albedo the
@@ -356,7 +356,13 @@ enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH, OFFSCREEN_FACES }
 ## color modulated by its captured linear depth (near = dark, far = bright, sky = white,
 ## black = texel never written; colored borders: red=right, green=left, blue=up,
 ## yellow=down, magenta=back, white cell=main view reference).
-## All debug views skip trace/blur/mix.
+## GI: the TEMPORALLY ACCUMULATED bounce light — the same history the mix pass
+## composites from (EMA: this frame's history slot; BOX: average of the valid slices).
+## 0.03125 gray base + Reinhard-compressed raw per-ray bounce, color kept. The trace's
+## bounce/occlusion intensity scales are divided out; the accumulated AO darkens the map
+## (x(1-occ)) like the composite. No albedo/lit-color modulation, no fog. Sky black (history
+## is never written there). Matches the composited result's noise/smoothing.
+## All debug views skip the normal composite.
 @export var debug_view: DebugView = DebugView.NONE:
 	set(value):
 		if debug_view == value:
