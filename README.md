@@ -50,8 +50,9 @@ Controls (settings → "Offscreen capture" category):
 - `capture_face_right / _left / _up / _down / _back` — toggle each side independently to trade
   coverage for performance. The back side is usually the least useful (rays rarely reach it
   within `ray_length`).
-- `face_resolution` — 16…2048 px, one square size shared by all sides. Each side is a full
-  extra scene render, so this is the main performance knob; 256–512 is a good starting range.
+- `face_resolution` — 8…256 px, one square size shared by all sides. Each side is a full
+  extra scene render, so this is the main performance knob; 64 is enough in practice —
+  higher rungs measured no visible difference while cost keeps growing quadratically.
 - `face_update_frequency` — 1…60 re-renders per second. Between renders a side holds its last
   frame, so low values make offscreen bounces lag under camera motion. 60 = every frame.
 

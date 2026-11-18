@@ -27,7 +27,7 @@ signal s_changed
 		
 ## Length of every ray in world units (scaled by pixel depth when depth_affect_ray_length is on).
 ## Step length is this value divided by steps_per_ray, with random jitter.
-@export_range(0.0, 20.0, 0.1) var ray_length: float = 1.0:
+@export_range(0.0, 20.0, 0.1) var ray_length: float = 2.0:
 	set(value):
 		if ray_length == value:
 			return
@@ -77,7 +77,7 @@ signal s_changed
 		
 ## Hit-acceptance slab in units of step length, not world units: a probe counts as a hit when it penetrates the surface by at most z_thickness x stepLength.
 ## Larger = more forgiving hits on thin/grazing geometry; smaller = more false misses and holes.
-@export var z_thickness: float = 10.0:
+@export var z_thickness: float = 4.0:
 	set(value):
 		if z_thickness == value:
 			return
@@ -252,7 +252,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 ## around the camera) so rays leaving the screen can still hit geometry outside the main view.
 ## Off = rays miss to sky exactly as before, and the side viewports never render (zero cost).
 ## Requires an SSRTOffscreenFaces node wired to the same settings + an SSRTOffscreenHandoff.
-@export var offscreen_capture_enabled: bool = false:
+@export var offscreen_capture_enabled: bool = true:
 	set(value):
 		if offscreen_capture_enabled == value:
 			return
@@ -301,11 +301,12 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 ## Resolution of every side capture (short edge; the side aspect matches the main
-## view). Each side is a full extra scene render — grow this only as far as the miss
-## rate demands.
-@export_enum("16", "32", "64", "128", "256", "512", "1024", "2048") var face_resolution: int = 4:
+## view). Each side is a full extra scene render, and the trace-side sampling cost
+## grows with the array leaving the GPU cache — measured indistinguishable above
+## 64 px, so the ladder stops at 256.
+@export_enum("8", "16", "32", "64", "128", "256") var face_resolution: int = 2:
 	set(value):
-		value = clampi(value, 0, 7)
+		value = clampi(value, 0, 5)
 		if face_resolution == value:
 			return
 		face_resolution = value
@@ -314,7 +315,7 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 ## Times per second each side viewport re-renders the scene. Between renders a side
 ## holds its last frame (offscreen hits get stale under motion at low rates).
 ## 60 = re-render every frame.
-@export_range(1, 60, 1) var face_update_frequency: int = 30:
+@export_range(1, 60, 1) var face_update_frequency: int = 10:
 	set(value):
 		value = clampi(value, 1, 60)
 		if face_update_frequency == value:
@@ -323,9 +324,12 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
-## Side pixel size from the face_resolution dropdown index (0 = 16 px .. 7 = 2048 px).
+## Side pixel size from the face_resolution dropdown index (0 = 8 px .. 5 = 256 px).
+## Clamped: scenes saved while the ladder reached 2048 (indices up to 7) resolve to
+## the top kept rung instead of a removed one. NOTE: prepending 8 px shifted the old
+## indices by one rung (old 2 = 64 px is now 3); test_scene.tscn was migrated.
 func face_size_px() -> int:
-	return 16 << face_resolution
+	return 8 << clampi(face_resolution, 0, 5)
 
 
 ## Bitmask of enabled sides, bits 0..4 = right, left, up, down, back (matches texture
