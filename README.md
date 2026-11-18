@@ -24,7 +24,7 @@ Godot 4.7.x, Forward+.
 4. Add a new `SubViewport` node with script `albedo_source_viewport.gd`.
 5. Create a new `SSRTAlbedoHandoff` resource (FileSystem dock → New Resource → `SSRTAlbedoHandoff`) and save it (e.g. as `SSRT_CE/albedo_handoff.tres`). Assign the saved file to **both** the effect's `albedo_handoff` (Compositor → `compositor_effects[0]` → property dropdown → Load) and the SubViewport's `albedo_handoff` (property dropdown → Load). Both must point to the same resource — it is the data bridge between the viewport and the effect.
 6. *(Optional)* Pin `camera_source` on the SubViewport to a specific camera. If left unset, the albedo mirror automatically follows the main window's active camera — correct for single-camera projects and projects that switch cameras at runtime. Set it only when the game renders through nested viewports or you need a fixed source.
-7. *(Optional — offscreen capture)* To let rays that leave the screen still hit geometry outside the main view, add a `Node` with script `offscreen_faces_source.gd`. Create a new `SSRTOffscreenHandoff` resource (FileSystem dock → New Resource) and assign it to **both** the effect's `face_handoff` and the node's `face_handoff`; also assign the same `settings` resource to the node's `settings`. Then in the settings, turn on `offscreen_capture_enabled` (see below). The node spawns five side viewports (right/left/up/down/back) that re-render the scene and feed the tracer.
+7. *(Optional — offscreen capture)* To let rays that leave the screen still hit geometry outside the main view, add a `Node` with script `offscreen_faces_source.gd`. Create a new `SSRTOffscreenHandoff` resource (FileSystem dock → New Resource) and assign it to **both** the effect's `face_handoff` and the node's `face_handoff`; also assign the same `settings` resource to the node's `settings`. Then in the settings, turn on `offscreen_capture_enabled` (see below). The node spawns five side viewports (right/left/up/down/back around the camera); each packs its lit color + linear depth into its own render target for the tracer to sample.
 8. Run the scene (F5).
 
 Or... just ask your AI agent to read this README and install it for you.
@@ -35,9 +35,14 @@ Or... just ask your AI agent to read this README and install it for you.
 
 Pure screen-space GI loses every ray that exits the frame — it can only bounce light from
 what the camera can currently see. `offscreen_capture_enabled` adds five extra scene renders
-(right / left / up / down / back around the camera, each a 90° square frustum) so rays that
-leave the main screen are depth-tested against those side captures and can still hit
-geometry behind or beside the view. Rays that miss everything still fall back to `sky_color`.
+(right / left / up / down / back around the camera) so rays that leave the main screen are
+depth-tested against those side captures and can still hit geometry behind or beside the view.
+Rays that miss everything still fall back to `sky_color`.
+
+Each side shares the MAIN camera's projection (fov, aspect, near/far) and its frustum is
+rotated toward the main view so the side coverage overlaps the main screen edge — no dead
+band where just-exited rays live. Side hits use the sides' native gbuffer normals for the
+same grazing rejection as the main path.
 
 Controls (settings → "Offscreen capture" category):
 
@@ -63,9 +68,9 @@ pure black = texel never written — so you can judge whether the side depth cap
 - Without a 3D history texture, temporal accumulation degrades to per-frame estimates (console warning).
 - Not compatible with FSR2 upscaling.
 - GI and occlusion composite in unfogged space when `fog_attenuates_gi` is on (fog mode is auto-detected through the wired albedo source). Not modeled: volumetric fog, fog aerial perspective and sun scatter.
-- Offscreen capture stores color + linear depth only: side hits have no normal test (back-face
-  rejection is skipped for them) and keep fog baked into their color, unlike the main path.
-  Side captures are lower resolution than the main view, so distant offscreen hits are coarse.
+- Offscreen sides store color + linear depth + the native gbuffer normal. Side hits keep
+  fog baked into their color (the main path un-fogs its bounce sources), and side captures
+  are lower resolution than the main view, so distant offscreen hits are coarse.
 
 ## Support
 

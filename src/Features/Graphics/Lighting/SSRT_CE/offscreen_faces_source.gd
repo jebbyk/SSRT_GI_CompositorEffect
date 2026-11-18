@@ -3,27 +3,27 @@ class_name SSRTOffscreenFaces
 extends Node
 
 ## Builds and drives the five offscreen side-capture viewports for SSRT_CE: shared
-## main world (own_world_3d = false, same trick as SSRTAlbedoSource), each a square
-## 90-degree-frustum camera at the source camera's position pointed right / left /
-## up / down / back, rendering the FULLY LIT scene. A per-viewport
-## SSRTOffscreenFaceCapture effect copies color + linear depth into the face arrays;
-## SSRT_CE reallocs them from the settings, this node only sizes and triggers renders.
+## main world (own_world_3d = false, same trick as SSRTAlbedoSource), each a camera at
+## the source camera's position using the SAME projection as the source (fov/near/far
+## copied, viewport aspect matched via handoff.face_size) so every side shares the
+## main camera's frustum shape.
+##
+## Face yaw/pitch are pulled IN from the main screen edge by OVERLAP_DEG so the side
+## frustums overlap the main view and leave no dead band where freshly-exited rays
+## live (a plain 90-degree cube starts covering only at 45 degrees, while a typical
+## main frustum exits at ~25-30). The angles go to SSRT_CE via the handoff; the trace
+## shader builds the matching frustum axes from them.
 ##
 ## Wire it to the same SSRTSettings + SSRTOffscreenHandoff as SSRT_CE (README install
 ## step). With offscreen_capture_enabled = false the side viewports never render.
 
 const FACE_COUNT := 5
 const FACE_NAMES := ["Right", "Left", "Up", "Down", "Back"]
-
-##Local rotation putting the camera's -Z on the side axis, index order matching
-##FACE_FORWARD/FACE_UP in trace.glsl and face_mask() bits in SSRT_settings.gd.
-const FACE_LOCAL_BASIS := [
-	Basis(Vector3.UP, -PI / 2.0),     #right: fwd -> +X
-	Basis(Vector3.UP, PI / 2.0),      #left: fwd -> -X
-	Basis(Vector3.RIGHT, PI / 2.0),   #up: fwd -> +Y
-	Basis(Vector3.RIGHT, -PI / 2.0),  #down: fwd -> -Y
-	Basis(Vector3.UP, PI),            #back: fwd -> -Z (camera back)
-]
+## How far each side frustum is pulled toward the main view (degrees of overlap).
+const OVERLAP_DEG := 10.0
+## Yaw/pitch clamp so tiny/huge FOVs can't collapse the coverage.
+const ANGLE_MIN_DEG := 40.0
+const ANGLE_MAX_DEG := 135.0
 
 ## Same SSRTSettings resource the SSRT_CE effect uses; drives enable/sides/size/frequency.
 @export var settings: SSRTSettings:
@@ -34,7 +34,7 @@ const FACE_LOCAL_BASIS := [
 		_reconnect_settings()
 
 ## SSRTOffscreenHandoff resource shared with SSRT_CE.
-@export var face_handoff: Resource
+@export var face_handoff: SSRTOffscreenHandoff
 
 ## Optional override, same semantics as SSRTAlbedoSource.camera_source: unset follows
 ## the window's active camera (editor preview mirrors the editor viewport camera).
@@ -60,10 +60,31 @@ func _process(delta: float) -> void:
 		return
 
 	var mask := settings.face_mask()
-	var px := settings.face_size_px()
 	var period := 1.0 / float(settings.face_update_frequency)
+	var target_size := face_handoff.face_size if face_handoff else Vector2i.ZERO
 
 	var src := _source_camera()
+	var bases : Array = []
+	if src:
+		#Side frustum angles from the SOURCE projection: yaw covers the horizontal
+		#faces, pitch the vertical ones; back stays fixed at 180 degrees.
+		var aspect := 1.0
+		if face_handoff and face_handoff.main_aspect > 0.0:
+			aspect = face_handoff.main_aspect
+		var hfov := rad_to_deg(2.0 * atan(tan(deg_to_rad(src.fov) * 0.5) * aspect))
+		var yaw := clampf(hfov - OVERLAP_DEG, ANGLE_MIN_DEG, ANGLE_MAX_DEG)
+		var pitch := clampf(src.fov - OVERLAP_DEG, ANGLE_MIN_DEG, ANGLE_MAX_DEG)
+		face_handoff.face_yaw = deg_to_rad(yaw)
+		face_handoff.face_pitch = deg_to_rad(pitch)
+
+		bases = [
+			Basis(Vector3.UP, -deg_to_rad(yaw)),         #right
+			Basis(Vector3.UP, deg_to_rad(yaw)),          #left
+			Basis(Vector3.RIGHT, deg_to_rad(pitch)),     #up
+			Basis(Vector3.RIGHT, -deg_to_rad(pitch)),    #down
+			Basis(Vector3.UP, PI),                       #back
+		]
+
 	for i in FACE_COUNT:
 		var vp := _viewports[i]
 		if not settings.offscreen_capture_enabled or (mask & (1 << i)) == 0:
@@ -72,14 +93,13 @@ func _process(delta: float) -> void:
 			continue
 
 		#Re-assert wiring so swapping handoff/settings in the inspector takes effect
-		#without a restart (allocation/realloc itself is SSRT_CE's render-thread job).
-		_effects[i].handoff = face_handoff as SSRTOffscreenHandoff
-		if vp.size.x != px:
-			vp.size = Vector2i(px, px)
+		#without a restart (array allocation itself is SSRT_CE's render-thread job).
+		_effects[i].handoff = face_handoff
+		if target_size != Vector2i.ZERO and vp.size != target_size:
+			vp.size = target_size
 		if src:
-			#Same origin, fixed 90-degree frustum; near/far match the source so the
-			#stored linear depth is directly comparable against the trace's probe.
-			_cameras[i].global_transform = src.global_transform * Transform3D(FACE_LOCAL_BASIS[i], Vector3.ZERO)
+			_cameras[i].global_transform = src.global_transform * Transform3D(bases[i], Vector3.ZERO)
+			_cameras[i].fov = src.fov
 			_cameras[i].near = src.near
 			_cameras[i].far = src.far
 
@@ -92,7 +112,6 @@ func _process(delta: float) -> void:
 
 
 func _build_faces() -> void:
-	var px := settings.face_size_px() if settings else 256
 	_accum.resize(FACE_COUNT)
 	for i in FACE_COUNT:
 		var vp := SubViewport.new()
@@ -100,7 +119,7 @@ func _build_faces() -> void:
 		#Share the main world; no node duplication. The per-camera compositor below
 		#shadows the world compositor, so SSRT_CE itself never runs on this viewport.
 		vp.own_world_3d = false
-		vp.size = Vector2i(px, px)
+		vp.size = Vector2i(256, 256)  #resized to handoff.face_size once the CE publishes it
 		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 		#4.7 has no scaling OFF: NEAREST at scale 1.0 keeps the raster 1:1.
 		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_NEAREST
@@ -111,10 +130,10 @@ func _build_faces() -> void:
 		var cam := Camera3D.new()
 		cam.name = "FaceCamera_%s" % FACE_NAMES[i]
 		cam.projection = Camera3D.PROJECTION_PERSPECTIVE
-		cam.fov = 90.0
+		cam.fov = 75.0  #overwritten from the source camera every frame
 		var eff := SSRTOffscreenFaceCapture.new()
 		eff.face_index = i
-		eff.handoff = face_handoff as SSRTOffscreenHandoff
+		eff.handoff = face_handoff
 		var comp := Compositor.new()
 		comp.compositor_effects = [eff]
 		cam.compositor = comp

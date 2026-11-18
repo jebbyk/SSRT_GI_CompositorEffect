@@ -45,8 +45,11 @@ layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 layout(set = 1, binding = 0, std140) uniform SSRTDataBlock {
 	SSRTData data;
 } settings;
-layout(set = 1, binding = 1) uniform sampler2DArray face_depth_array;
-layout(set = 1, binding = 2) uniform sampler2DArray face_color_array;
+//Side capture arrays (5 layers = face index, order right,left,up,down,back):
+//face_color rgb = lit color, a = linear distance along the face axis;
+//face_normal = the side's raw normal_roughness gbuffer (face view space).
+layout(set = 1, binding = 1) uniform sampler2DArray face_color;
+layout(set = 1, binding = 2) uniform sampler2DArray face_normal;
 
 // Set 2
 layout(rgba16f, set = 2, binding = 1) uniform image2D out_image;
@@ -56,6 +59,8 @@ layout(push_constant, std430) uniform Params {
 	vec2 reserved;
 	float fog_attenuates_gi;
 	float fog_depth_mode;
+	float face_yaw;
+	float face_pitch;
 } params;
 
 
@@ -97,68 +102,6 @@ bool inScreen(vec2 coord, vec2 size)
 		coord.y > 0.0 && coord.y < size.y;
 }
 
-//Side camera axes in ray/probe space (x right, y up, z forward): forward and up of the
-//five offscreen faces, index order right, left, up, down, back. This frame is left-handed
-//(+z forward), so screen right = cross(up, forward). Indices match the face texture array
-//layers and the SSRTSettings.face_mask() bits.
-const vec3 FACE_FORWARD[5] = vec3[5](
-	vec3( 1.0, 0.0, 0.0),
-	vec3(-1.0, 0.0, 0.0),
-	vec3( 0.0, 1.0, 0.0),
-	vec3( 0.0,-1.0, 0.0),
-	vec3( 0.0, 0.0,-1.0)
-);
-const vec3 FACE_UP[5] = vec3[5](
-	vec3( 0.0, 1.0, 0.0),
-	vec3( 0.0, 1.0, 0.0),
-	vec3( 0.0, 0.0,-1.0),
-	vec3( 0.0, 0.0, 1.0),
-	vec3( 0.0, 1.0, 0.0)
-);
-
-//Depth-probe a world-space ray point against the offscreen side captures (forward cube
-//projection: dominant axis picks the face, the other two give the uv of the 90-degree
-//frustum). Returns vec4(color, 1) on hit, vec4(0) on miss. No normal rejection: the
-//sides store color + linear depth only.
-vec4 face_trace(vec3 probePosition, float stepLength)
-{
-	vec3 ap = abs(probePosition);
-	int face = -1;
-	if(ap.x >= ap.y && ap.x >= ap.z) {
-		face = probePosition.x > 0.0 ? 0 : 1;
-	} else if(ap.y >= ap.z) {
-		face = probePosition.y > 0.0 ? 2 : 3;
-	} else if(probePosition.z < 0.0) {
-		face = 4;
-	}
-	if(face < 0 || (int(settings.data.face_mask) & (1 << face)) == 0) {
-		return vec4(0);
-	}
-
-	float d = dot(FACE_FORWARD[face], probePosition);
-	if(d <= 0.0) {
-		return vec4(0);
-	}
-
-	vec3 right = cross(FACE_UP[face], FACE_FORWARD[face]);
-	vec2 tuv = vec2(dot(right, probePosition), dot(FACE_UP[face], probePosition)) / d;
-	if(abs(tuv.x) > 1.0 || abs(tuv.y) > 1.0) {
-		return vec4(0);
-	}
-
-	int fsize = int(settings.data.face_size);
-	ivec2 ftex = clamp(ivec2((tuv + 1.0) * 0.5 * float(fsize)), ivec2(0), ivec2(fsize - 1));
-	float face_depth = texelFetch(face_depth_array, ivec3(ftex, face), 0).r;
-	//0 = texel never written (arrays allocate zeroed): a zero must never read as a
-	//surface at distance 0.
-	if(face_depth <= 0.0 || d <= face_depth || d >= face_depth + settings.data.z_thickness * stepLength) {
-		return vec4(0);
-	}
-	//Fog stays baked into the side color (approximation vs. the main path's un-fog);
-	//the GI*transmittance composite extinguishes deep-fog hits anyway.
-	return vec4(textureLod(face_color_array, vec3((tuv + 1.0) * 0.5, float(face)), 0.0).rgb, 1.0);
-}
-
 vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 	float roughness = p_normal_roughness.w;
 	if (roughness > 0.5) {
@@ -172,6 +115,80 @@ vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
 	return nr;
 	//return vec4(p_normal_roughness.xyz, 1.0);
 }
+
+//Depth-probe a ray point against the offscreen side captures. The sides share the
+//MAIN projection (fov/near/far/aspect copied from the source camera), so their
+//frustum axes are parameterized by the face_yaw/face_pitch push constants: yaw for
+//right/left, pitch for up/down, back fixed. The main path's ray space is FOV-squashed
+//(x,y scaled by the projection diagonal, z true meters) — un-squash before rotating,
+//rotations do not commute with squashing. First face whose frustum contains the point
+//and passes the depth window + grazing test wins; a rejected face falls through to
+//the next. Returns vec4(color, 1) on hit, vec4(0) on miss.
+vec4 face_trace(vec3 probePosition, vec3 probeDirection, float stepLength)
+{
+	vec3 squash = vec3(2.0 / scene.data.projection_matrix[0][0],
+	                   2.0 / scene.data.projection_matrix[1][1], 1.0);
+	vec3 p = probePosition * squash;
+	vec3 dir_v = normalize(probeDirection * squash);
+	float p00 = scene.data.projection_matrix[0][0];
+	float p11 = scene.data.projection_matrix[1][1];
+	float cy = cos(params.face_yaw), sy = sin(params.face_yaw);
+	float cp = cos(params.face_pitch), sp = sin(params.face_pitch);
+	float best_d = -1.0;
+	vec4 best = vec4(0);
+
+	//Face axes (forward, up, right) in main view space (x right, y up, z forward);
+	//index order right,left,up,down,back matches the array layers and face_mask bits.
+	for(int i = 0; i < 5; i++) {
+		if((int(settings.data.face_mask) & (1 << i)) == 0) {
+			continue;
+		}
+
+		vec3 f, u, r;
+		if(i == 0) { f = vec3( sy, 0.0, cy); u = vec3(0.0, 1.0, 0.0); r = vec3( cy, 0.0, -sy); }
+		if(i == 1) { f = vec3(-sy, 0.0, cy); u = vec3(0.0, 1.0, 0.0); r = vec3( cy, 0.0,  sy); }
+		if(i == 2) { f = vec3(0.0,  sp, cp); u = vec3(0.0, cp, -sp); r = vec3(1.0, 0.0, 0.0); }
+		if(i == 3) { f = vec3(0.0, -sp, cp); u = vec3(0.0, cp,  sp); r = vec3(1.0, 0.0, 0.0); }
+		if(i == 4) { f = vec3(0.0, 0.0, -1.0); u = vec3(0.0, 1.0, 0.0); r = vec3(-1.0, 0.0, 0.0); }
+
+		float d = dot(f, p);
+		if(d <= 0.0) {
+			continue;
+		}
+		vec2 ndc = vec2(p00 * dot(r, p), p11 * dot(u, p)) / d;
+		if(abs(ndc.x) > 1.0 || abs(ndc.y) > 1.0) {
+			continue;
+		}
+
+		vec4 cd = textureLod(face_color, vec3(ndc * 0.5 + 0.5, float(i)), 0.0);
+		//0 = unwritten/placeholder texel: must never read as a surface at distance 0.
+		if(cd.a <= 0.0 || d <= cd.a || d >= cd.a + settings.data.z_thickness * stepLength) {
+			continue;
+		}
+
+		//Native side normal from the gbuffer array. normal_roughness_compatibility
+		//outputs PROBE space (x right, y up, z forward), so the face axes map straight
+		//through with plus signs: face-right -> r, face-up -> u, face-forward -> f.
+		if(!settings.data.back_face_lighting) {
+			vec4 nr = normal_roughness_compatibility(textureLod(face_normal, vec3(ndc * 0.5 + 0.5, float(i)), 0.0));
+			vec3 n_main = r * nr.x + u * nr.y + f * nr.z;
+			if(dot(n_main, dir_v) > -settings.data.normal_treshold / 10.0) {
+				continue;
+			}
+		}
+
+		//Closest accepted hit wins: in the overlap bands several faces contain the same
+		//point, and the first-containing face may report a farther surface.
+		//Fog stays baked into the side color (approximation vs. the main path's un-fog);
+		//the GI*transmittance composite extinguishes deep-fog hits anyway.
+		if(best_d < 0.0 || d < best_d) {
+			best_d = d;
+			best = vec4(cd.rgb, 1.0);
+		}
+	}
+	return best;
+}
+
 
 #include "includes/common.glsl"
 #include "includes/fog.glsl"
@@ -240,7 +257,7 @@ void main() {
 				}
 				//Side capture on: keep marching, probing the face buffers each step.
 				exited_offscreen = true;
-				vec4 face_hit = face_trace(probePosition, stepLength);
+				vec4 face_hit = face_trace(probePosition, probeDirection, stepLength);
 				if(face_hit.a > 0.5) {
 					GI.a += 1.0;
 					GI.rgb += face_hit.rgb;

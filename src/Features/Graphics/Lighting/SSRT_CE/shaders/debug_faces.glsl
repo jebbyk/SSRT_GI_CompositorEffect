@@ -1,6 +1,8 @@
 #[compute]
 #version 450
 
+#include "includes/scene_data.glsl"
+
 //SSRTData must stay byte-identical to trace.glsl (shared UBO).
 struct SSRTData {
 	vec4 sky_color;
@@ -38,8 +40,7 @@ layout(rgba16f, set = 0, binding = 1) uniform image2D color_image;
 layout(set = 1, binding = 0, std140) uniform SSRTDataBlock {
 	SSRTData data;
 } settings;
-layout(set = 1, binding = 1) uniform sampler2DArray face_depth_array;
-layout(set = 1, binding = 2) uniform sampler2DArray face_color_array;
+layout(set = 1, binding = 1) uniform sampler2DArray face_color;
 
 layout(push_constant, std430) uniform Params {
 	vec2 raster_size;
@@ -47,8 +48,8 @@ layout(push_constant, std430) uniform Params {
 } params;
 
 //3x2 grid: cells 0..4 are the faces by layer index, cell 5 the live main view.
-//The tint marks the cell border: red=right, green=left, blue=up, yellow=down,
-//magenta=back, white=main.
+//Border tint per cell: red=right, green=left, blue=up, yellow=down, magenta=back,
+//white=main.
 vec3 cell_tint(int cell) {
 	if(cell == 0) return vec3(1.0, 0.25, 0.25);
 	if(cell == 1) return vec3(0.25, 1.0, 0.25);
@@ -76,14 +77,15 @@ void main() {
 		outc = imageLoad(color_image, uv).rgb;
 	}
 	else if(settings.data.offscreen_enabled > 0.5 && (int(settings.data.face_mask) & (1 << cell)) != 0) {
-		//Color modulated by the side's captured linear depth (log-normalized against
-		//far_plane: near = dark, far = bright, sky = white — same convention as the
-		//DEPTH view). Pure black = texel never written (depth 0).
-		int fsize = int(settings.data.face_size);
-		ivec2 ftex = clamp(ivec2(cell_uv * float(fsize)), ivec2(0), ivec2(fsize - 1));
-		float d = texelFetch(face_depth_array, ivec3(ftex, cell), 0).r;
-		float ramp = clamp(log(1.0 + max(d, 0.0)) / log(1.0 + settings.data.far_plane), 0.0, 1.0);
-		outc = textureLod(face_color_array, vec3(cell_uv, float(cell)), 0.0).rgb * ramp;
+		//Color modulated by the side's captured linear depth (alpha channel,
+		//log-normalized against far_plane: near = dark, far = bright, sky = white,
+		//black = unwritten/placeholder).
+		vec4 cd = textureLod(face_color, vec3(cell_uv, float(cell)), 0.0);
+		//Color modulated by the side's captured linear depth (alpha channel,
+		//log-normalized against far_plane: near = dark, far = bright, sky = white,
+		//black = unwritten/placeholder).
+		float ramp = clamp(log(1.0 + max(cd.a, 0.0)) / log(1.0 + settings.data.far_plane), 0.0, 1.0);
+		outc = cd.rgb * ramp;
 	}
 	else {
 		outc = vec3(0.03);

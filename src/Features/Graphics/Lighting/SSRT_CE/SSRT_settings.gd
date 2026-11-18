@@ -300,8 +300,9 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		capture_face_back = value
 		s_changed.emit()
 
-## Resolution of every side capture (square, one shared size). Each side is a full
-## extra scene render — grow this only as far as the miss rate demands.
+## Resolution of every side capture (short edge; the side aspect matches the main
+## view). Each side is a full extra scene render — grow this only as far as the miss
+## rate demands.
 @export_enum("16", "32", "64", "128", "256", "512", "1024", "2048") var face_resolution: int = 4:
 	set(value):
 		value = clampi(value, 0, 7)
