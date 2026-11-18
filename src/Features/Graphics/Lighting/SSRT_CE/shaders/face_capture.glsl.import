@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://dbplixtknpbgd"
+path="res://.godot/imported/face_capture.glsl-f13e200213174f7e4b70df384dc66027.res"
+
+[deps]
+
+source_file="res://Features/Graphics/Lighting/SSRT_CE/shaders/face_capture.glsl"
+dest_files=["res://.godot/imported/face_capture.glsl-f13e200213174f7e4b70df384dc66027.res"]
+
+[params]
+

@@ -23,6 +23,10 @@ struct SSRTData {
 
 	bool depth_affect_ray_length;
 	bool back_face_lighting;
+
+	float offscreen_enabled;
+	float face_mask;
+	float face_size;
 };
 
 // Invocations in the (x, y, z) dimension
@@ -41,6 +45,8 @@ layout(rgba16f, set = 0, binding = 3) uniform image2D normal_roughness_image;
 layout(set = 1, binding = 0, std140) uniform SSRTDataBlock {
 	SSRTData data;
 } settings;
+layout(set = 1, binding = 1) uniform sampler2DArray face_depth_array;
+layout(set = 1, binding = 2) uniform sampler2DArray face_color_array;
 
 // Set 2
 layout(rgba16f, set = 2, binding = 1) uniform image2D out_image;
@@ -89,6 +95,68 @@ bool inScreen(vec2 coord, vec2 size)
 {
 	return coord.x > 0.0 && coord.x < size.x &&
 		coord.y > 0.0 && coord.y < size.y;
+}
+
+//Side camera axes in ray/probe space (x right, y up, z forward): forward and up of the
+//five offscreen faces, index order right, left, up, down, back. This frame is left-handed
+//(+z forward), so screen right = cross(up, forward). Indices match the face texture array
+//layers and the SSRTSettings.face_mask() bits.
+const vec3 FACE_FORWARD[5] = vec3[5](
+	vec3( 1.0, 0.0, 0.0),
+	vec3(-1.0, 0.0, 0.0),
+	vec3( 0.0, 1.0, 0.0),
+	vec3( 0.0,-1.0, 0.0),
+	vec3( 0.0, 0.0,-1.0)
+);
+const vec3 FACE_UP[5] = vec3[5](
+	vec3( 0.0, 1.0, 0.0),
+	vec3( 0.0, 1.0, 0.0),
+	vec3( 0.0, 0.0,-1.0),
+	vec3( 0.0, 0.0, 1.0),
+	vec3( 0.0, 1.0, 0.0)
+);
+
+//Depth-probe a world-space ray point against the offscreen side captures (forward cube
+//projection: dominant axis picks the face, the other two give the uv of the 90-degree
+//frustum). Returns vec4(color, 1) on hit, vec4(0) on miss. No normal rejection: the
+//sides store color + linear depth only.
+vec4 face_trace(vec3 probePosition, float stepLength)
+{
+	vec3 ap = abs(probePosition);
+	int face = -1;
+	if(ap.x >= ap.y && ap.x >= ap.z) {
+		face = probePosition.x > 0.0 ? 0 : 1;
+	} else if(ap.y >= ap.z) {
+		face = probePosition.y > 0.0 ? 2 : 3;
+	} else if(probePosition.z < 0.0) {
+		face = 4;
+	}
+	if(face < 0 || (int(settings.data.face_mask) & (1 << face)) == 0) {
+		return vec4(0);
+	}
+
+	float d = dot(FACE_FORWARD[face], probePosition);
+	if(d <= 0.0) {
+		return vec4(0);
+	}
+
+	vec3 right = cross(FACE_UP[face], FACE_FORWARD[face]);
+	vec2 tuv = vec2(dot(right, probePosition), dot(FACE_UP[face], probePosition)) / d;
+	if(abs(tuv.x) > 1.0 || abs(tuv.y) > 1.0) {
+		return vec4(0);
+	}
+
+	int fsize = int(settings.data.face_size);
+	ivec2 ftex = clamp(ivec2((tuv + 1.0) * 0.5 * float(fsize)), ivec2(0), ivec2(fsize - 1));
+	float face_depth = texelFetch(face_depth_array, ivec3(ftex, face), 0).r;
+	//0 = texel never written (arrays allocate zeroed): a zero must never read as a
+	//surface at distance 0.
+	if(face_depth <= 0.0 || d <= face_depth || d >= face_depth + settings.data.z_thickness * stepLength) {
+		return vec4(0);
+	}
+	//Fog stays baked into the side color (approximation vs. the main path's un-fog);
+	//the GI*transmittance composite extinguishes deep-fog hits anyway.
+	return vec4(textureLod(face_color_array, vec3((tuv + 1.0) * 0.5, float(face)), 0.0).rgb, 1.0);
 }
 
 vec4 normal_roughness_compatibility(vec4 p_normal_roughness) {
@@ -155,6 +223,9 @@ void main() {
 		vec3 probeDirection = randomHemispherePoint(rand3d, normal) * vec3(aspectRatio, 1.0, 1.0);
 
 		vec3 probeStep = probeDirection * stepLength;
+
+		bool ray_hit = false;
+		bool exited_offscreen = false;
 		
 		for(float j = 1.0; j < settings.data.steps_per_ray + 1.0; j += 1.0){
 			probePosition += probeStep;
@@ -162,9 +233,21 @@ void main() {
 			vec2 newUvCoord = probePosition.xy / probePosition.z + vec2(0.5);
 
 			if(!inScreen(ivec2(newUvCoord * vec2(size)), size)) {
-				//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
-				GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
-				break;
+				if(settings.data.offscreen_enabled <= 0.5) {
+					//Sky hit: normalize the 0-100 intensity slider to a 0-1 multiplier.
+					GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
+					break;
+				}
+				//Side capture on: keep marching, probing the face buffers each step.
+				exited_offscreen = true;
+				vec4 face_hit = face_trace(probePosition, stepLength);
+				if(face_hit.a > 0.5) {
+					GI.a += 1.0;
+					GI.rgb += face_hit.rgb;
+					ray_hit = true;
+					break;
+				}
+				continue;
 			}
 
 			float probeTestDepth = get_linear_depth(ivec2(newUvCoord * vec2(size)));//slightly differs
@@ -191,8 +274,14 @@ void main() {
 					probeTestColor = (probeTestColor - hit_fog.rgb) / hit_fog.a;
 				}
 				GI.rgb += probeTestColor;
+				ray_hit = true;
 				break;
 			}
+		}
+
+		if(!ray_hit && exited_offscreen) {
+			//Left the screen, found nothing on the sides: same sky miss as the disabled path.
+			GI.rgb += settings.data.sky_color.rgb * settings.data.sky_color_intensity * 0.01;
 		}
 	}
 

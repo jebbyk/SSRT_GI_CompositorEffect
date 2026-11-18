@@ -247,14 +247,115 @@ enum AccumulationMode { EMA, BOX8, BOX16F }
 		s_changed.emit()
 
 
+@export_category("Offscreen capture")
+## Master switch for offscreen side capture: five extra scene renders (right/left/up/down/back
+## around the camera) so rays leaving the screen can still hit geometry outside the main view.
+## Off = rays miss to sky exactly as before, and the side viewports never render (zero cost).
+## Requires an SSRTOffscreenFaces node wired to the same settings + an SSRTOffscreenHandoff.
+@export var offscreen_capture_enabled: bool = false:
+	set(value):
+		if offscreen_capture_enabled == value:
+			return
+		offscreen_capture_enabled = value
+		s_changed.emit()
+
+## Capture the side centered 90 degrees right of the camera (ray-space +X).
+@export var capture_face_right: bool = true:
+	set(value):
+		if capture_face_right == value:
+			return
+		capture_face_right = value
+		s_changed.emit()
+
+## Capture the side centered 90 degrees left of the camera (ray-space -X).
+@export var capture_face_left: bool = true:
+	set(value):
+		if capture_face_left == value:
+			return
+		capture_face_left = value
+		s_changed.emit()
+
+## Capture the side centered 90 degrees above the camera (ray-space +Y).
+@export var capture_face_up: bool = true:
+	set(value):
+		if capture_face_up == value:
+			return
+		capture_face_up = value
+		s_changed.emit()
+
+## Capture the side centered 90 degrees below the camera (ray-space -Y).
+@export var capture_face_down: bool = true:
+	set(value):
+		if capture_face_down == value:
+			return
+		capture_face_down = value
+		s_changed.emit()
+
+## Capture the side behind the camera (ray-space -Z). Usually the least useful;
+## rays rarely reach it within ray_length.
+@export var capture_face_back: bool = true:
+	set(value):
+		if capture_face_back == value:
+			return
+		capture_face_back = value
+		s_changed.emit()
+
+## Resolution of every side capture (square, one shared size). Each side is a full
+## extra scene render — grow this only as far as the miss rate demands.
+@export_enum("16", "32", "64", "128", "256", "512", "1024", "2048") var face_resolution: int = 4:
+	set(value):
+		value = clampi(value, 0, 7)
+		if face_resolution == value:
+			return
+		face_resolution = value
+		s_changed.emit()
+
+## Times per second each side viewport re-renders the scene. Between renders a side
+## holds its last frame (offscreen hits get stale under motion at low rates).
+## 60 = re-render every frame.
+@export_range(1, 60, 1) var face_update_frequency: int = 30:
+	set(value):
+		value = clampi(value, 1, 60)
+		if face_update_frequency == value:
+			return
+		face_update_frequency = value
+		s_changed.emit()
+
+
+## Side pixel size from the face_resolution dropdown index (0 = 16 px .. 7 = 2048 px).
+func face_size_px() -> int:
+	return 16 << face_resolution
+
+
+## Bitmask of enabled sides, bits 0..4 = right, left, up, down, back (matches texture
+## array layers and the trace.glsl face index).
+func face_mask() -> int:
+	var mask := 0
+	if capture_face_right:
+		mask |= 1
+	if capture_face_left:
+		mask |= 2
+	if capture_face_up:
+		mask |= 4
+	if capture_face_down:
+		mask |= 8
+	if capture_face_back:
+		mask |= 16
+	return mask
+
+
 @export_category("Debug")
-enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH }
+enum DebugView { NONE, MOTION_VECTORS, UNLIT_ALBEDO, DEPTH, OFFSCREEN_FACES }
 
 ## Debug overlay replacing the effect output. MOTION_VECTORS: black = static, R/G = x/y motion
 ## (64 px = full range), red = previous position off-screen. UNLIT_ALBEDO: the unlit albedo the
 ## GI bounce modulates by (lit-color fallback where no source viewport is wired up).
 ## DEPTH: grayscale of the raw scene-depth sample the GI reads (near = dark, far = bright,
-## sky = white). Skips trace/blur/mix.
+## sky = white). OFFSCREEN_FACES: the live side-capture textures tiled 3x2, each side's
+## color modulated by its captured linear depth (near = dark, far = bright, sky = white,
+## black = texel never written; colored borders: red=right, green=left, blue=up,
+## yellow=down, magenta=back, white cell=main view reference).
+## All debug views skip trace/blur/mix.
 @export var debug_view: DebugView = DebugView.NONE:
 	set(value):
 		if debug_view == value:
